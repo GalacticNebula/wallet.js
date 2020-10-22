@@ -1,0 +1,5 @@
+apps:
+  - script: './dist/admin.js'
+    name: 'admin'
+    exec_mode: 'cluster'
+    instances: 1

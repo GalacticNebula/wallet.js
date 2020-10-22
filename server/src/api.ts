@@ -1,0 +1,43 @@
+require('module-alias/register');
+import dotenv from 'dotenv';
+dotenv.config({ path: '.env' });
+
+import os from 'os';
+import Koa from 'koa';
+import http from 'http';
+
+import { logger } from '@common/utils';
+import mysql from '@common/dbs/mysql';
+import { handleRouter } from './helpers/http';
+import { logger as reqLogger, cors, body, realIp, session } from '@middlewares/index';
+
+const PORT = Number(process.env.API_PORT) || 80;
+const app = new Koa();
+
+app.keys = ['6fd1de93-812b-4e3a-a4b6-b04d8136a8da'];
+
+app.use(reqLogger({ server: 'api' }));
+
+app.use(realIp());
+
+app.use(body());
+
+app.use(cors());
+
+app.use(session(app, { prefix: 'api_' }));
+
+app.use(handleRouter([ ], 'api').routes());
+
+mysql
+  .authenticate()
+  .then(() => {
+    const server = http.createServer(app.callback());
+    server.keepAliveTimeout = 120 * 1000;
+    server.headersTimeout = 125 * 1000;
+    server.listen(PORT, 65535, () => {
+      logger.info(`api server start, hostname: ${os.hostname()}, port: ${PORT}`);
+    });
+  })
+  .catch(e => {
+    logger.error(JSON.stringify(e));
+  });
