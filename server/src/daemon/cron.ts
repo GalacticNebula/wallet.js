@@ -2,35 +2,25 @@
 import { process_init } from '../common/utils/process_init';
 process_init();
 
-import * as _ from 'lodash';
+import _ from 'lodash';
 import cron from 'node-cron';
 import { logger, env } from '@common/utils';
+import { Schedule } from './schedule';
+import { Erc20USDTDeposit } from './erc20_usdt_deposit';
 
 const timezone = 'Asia/Shanghai';
 
-interface CRON {
-  schedule: string;
-  callback: () => Promise<void>;
-}
-
-const CRONS: CRON[] = [
-  {
-    schedule: 'CRON_FOO',
-    callback: bar
-  }
+const CRONS: Schedule[] = [
+  new Erc20USDTDeposit()
 ];
-
-async function bar() {
-
-}
 
 function run() {
   CRONS.forEach(c => {
-    const v = env.get(c.schedule);
+    const v = env.get(c.cron);
     if (!_.isEmpty(v)) {
-      const task = cron.schedule(v, async () => await c.callback(), { timezone });
+      const task = cron.schedule(v, async () => await c.run(), { timezone });
       task.start();
-      console.log(`startd ${c.schedule}: ${v}`);
+      console.log(`startd ${c.cron}: ${v}`);
     }
   });
 }
