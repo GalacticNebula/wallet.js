@@ -98,6 +98,7 @@
     "@lib": "dist/lib",
     "@config": "dist/config",
     "@models": "dist/models",
-    "@routes": "dist/routes"
+    "@routes": "dist/routes",
+    "@helpers": "dist/helpers"
   }
 }

@@ -1,5 +1,5 @@
-import { init } from './init';
-init();
+import { process_init } from '../common/utils/process_init';
+process_init();
 import { sequelize } from '@common/dbs';
 import { configRepository } from '@models/index';
 

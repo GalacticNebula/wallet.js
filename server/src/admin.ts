@@ -11,8 +11,8 @@ import mysql from '@common/dbs/mysql';
 import { handleRouter } from './helpers/http';
 import adminRoutes from '@routes/admin.routes';
 import { logger as reqLogger, cors, body, realIp, session } from '@middlewares/index';
+import { ADMIN_PORT } from '@config/env';
 
-const PORT = Number(process.env.ADMIN_PORT) || 80;
 const app = new Koa();
 
 app.keys = ['40a7522c-c862-48c7-a39c-723f631b2e8b'];
@@ -35,8 +35,8 @@ mysql
     const server = http.createServer(app.callback());
     server.keepAliveTimeout = 120 * 1000;
     server.headersTimeout = 125 * 1000;
-    server.listen(PORT, 65535, () => {
-      logger.info(`admin server start, hostname: ${os.hostname()}, port: ${PORT}`);
+    server.listen(ADMIN_PORT, 65535, () => {
+      logger.info(`admin server start, hostname: ${os.hostname()}, port: ${ADMIN_PORT}`);
     });
   })
   .catch(e => {

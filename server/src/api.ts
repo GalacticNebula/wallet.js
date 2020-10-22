@@ -10,8 +10,9 @@ import { logger } from '@common/utils';
 import mysql from '@common/dbs/mysql';
 import { handleRouter } from './helpers/http';
 import { logger as reqLogger, cors, body, realIp, session } from '@middlewares/index';
+import { API_PORT } from '@config/env';
+import apiRoutes from '@routes/api.routes';
 
-const PORT = Number(process.env.API_PORT) || 80;
 const app = new Koa();
 
 app.keys = ['6fd1de93-812b-4e3a-a4b6-b04d8136a8da'];
@@ -26,7 +27,7 @@ app.use(cors());
 
 app.use(session(app, { prefix: 'api_' }));
 
-app.use(handleRouter([ ], 'api').routes());
+app.use(handleRouter([ ...apiRoutes ], 'api').routes());
 
 mysql
   .authenticate()
@@ -34,8 +35,8 @@ mysql
     const server = http.createServer(app.callback());
     server.keepAliveTimeout = 120 * 1000;
     server.headersTimeout = 125 * 1000;
-    server.listen(PORT, 65535, () => {
-      logger.info(`api server start, hostname: ${os.hostname()}, port: ${PORT}`);
+    server.listen(API_PORT, 65535, () => {
+      logger.info(`api server start, hostname: ${os.hostname()}, port: ${API_PORT}`);
     });
   })
   .catch(e => {
