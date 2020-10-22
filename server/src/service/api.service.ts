@@ -12,7 +12,7 @@ class ApiService extends BaseService {
 
     let wallet = await userWalletStore.findByUid(user_id);
     if (!wallet) {
-      const eth = ethHelper.createWallet(user_id);
+      const eth = await ethHelper.createWallet(user_id);
       await userWalletStore.upsert({ user_id, eth });
       wallet = await userWalletStore.findByUid(user_id);
     }
@@ -29,7 +29,7 @@ class ApiService extends BaseService {
   }
 
   public listToken(params: any) {
-    
+
   }
 
   public addToken(params: any) {
