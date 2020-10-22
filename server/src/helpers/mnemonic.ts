@@ -1,23 +1,22 @@
 
 import * as bip39 from 'bip39';
 import { hdkey } from 'ethereumjs-wallet';
-import * as util from 'ethereumjs-util';
+//import * as util from 'ethereumjs-util';
 
 class Mnemonic {
   
-  public toPrivateKey(mnemonic: string, derivePath: string) {
-    const seed = bip39.mnemonicToSeed(mnemonic);
+  public async toPrivateKey(mnemonic: string, derivePath: string) {
+    const seed = await bip39.mnemonicToSeed(mnemonic);
     const hdWallet = hdkey.fromMasterSeed(seed);
     const key = hdWallet.derivePath(derivePath);
-    return util.bufferToHex(key._hdkey._privateKey);
+    return key.getWallet().getPrivateKeyString();
   }
 
-  public toAddress(mnemonic: string, derivePath: string) {
-    const seed = bip39.mnemonicToSeed(mnemonic);
+  public async toAddress(mnemonic: string, derivePath: string) {
+    const seed = await bip39.mnemonicToSeed(mnemonic);
     const hdWallet = hdkey.fromMasterSeed(seed);
     const key = hdWallet.derivePath(derivePath);
-    const address = util.pubToAddress(key._hdkey._publicKey, true);
-    return util.toChecksumAddress(address.toString('hex'));
+    return key.getWallet().getAddressString();
   }
 
 }

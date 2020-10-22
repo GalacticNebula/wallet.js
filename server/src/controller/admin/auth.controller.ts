@@ -1,7 +1,7 @@
 import _ from 'lodash';
 import { Context } from 'koa';
 import BaseController from '../base.controller';
-import { adminService, authService } from '@service/index';
+import { adminService } from '@service/index';
 
 class AuthController extends BaseController {
 
@@ -16,10 +16,6 @@ class AuthController extends BaseController {
   public async logout(ctx: Context) {
     await adminService.logout(ctx.uid, ctx.realIp);
     ctx.session = null;
-  }
-
-  public getCaptcha(ctx: Context) {
-    return authService.getCaptcha();
   }
 
 }

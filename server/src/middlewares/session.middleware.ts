@@ -1,7 +1,7 @@
 import koaSession from 'koa-session';
 import Koa from 'koa';
 
-import { adminService, authService } from '@service/index';
+import { adminService } from '@service/index';
 
 const domain = process.env.DOMAIN || undefined;
 
@@ -32,9 +32,7 @@ class Store {
   constructor(private prefix: string) {}
 
   public getService(key: string) {
-    if (this.prefix === 'api_') {
-      return { service: authService, name: 'user' };
-    } else if (this.prefix === 'admin_') {
+    if (this.prefix === 'admin_') {
       return { service: adminService, name: 'admin' };
     } else {
       throw new Error(`key is invalid, get key: ${key}`);

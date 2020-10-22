@@ -1,10 +1,9 @@
 import Joi from '@hapi/joi';
 import { Route } from '@common/interfaces';
-import { Power, RequestMethod } from '@common/enums';
+import { RequestMethod } from '@common/enums';
 import fieldReg from '@common/field_reg';
 import { admin } from '@controller/admin';
 import { adminAuth } from '@common/auths';
-import { Role } from '@common/constants';
 
 const prefix = '/admin';
 
@@ -34,12 +33,14 @@ const routes: Route[] = [
     }),
     action: admin.authController.login
   },
+/*
   {
     name: 'get captcha',
     path: '/captcha',
     method: RequestMethod.GET,
     action: admin.authController.getCaptcha
   },
+*/
   {
     name: 'logout',
     path: '/logout',
@@ -51,7 +52,7 @@ const routes: Route[] = [
     name: 'list admin',
     path: '/admin',
     method: RequestMethod.GET,
-    middlewares: [ adminAuth({ roles: [ Role.ADMIN ] }) ],
+    middlewares: [ adminAuth() ],
     params: Joi.object({
       username: Joi
         .string()
@@ -71,7 +72,7 @@ const routes: Route[] = [
     name: 'add admin',
     path: '/admin',
     method: RequestMethod.POST,
-    middlewares: [ adminAuth({ roles: [ Role.ADMIN ], power: Power.ADMIN_ACCOUNT }) ],
+    middlewares: [ adminAuth() ],
     params: Joi.object({
       username: Joi
         .string()
@@ -89,7 +90,7 @@ const routes: Route[] = [
     name: 'remove admin',
     path: '/admin/:id',
     method: RequestMethod.DEL,
-    middlewares: [ adminAuth({ roles: [ Role.ADMIN ], power: Power.ADMIN_ACCOUNT }) ],
+    middlewares: [ adminAuth() ],
     action: admin.adminController.removeAdmin
   },
   {
@@ -115,7 +116,7 @@ const routes: Route[] = [
     name: 'update admin power',
     path: '/admin/power',
     method: RequestMethod.POST,
-    middlewares: [ adminAuth({ roles: [ Role.ADMIN ], power: Power.POWER }) ],
+    middlewares: [ adminAuth() ],
     params: Joi.object({
       id: Joi
         .number()
@@ -132,7 +133,7 @@ const routes: Route[] = [
     name: 'list admin log',
     path: '/admin/log',
     method: RequestMethod.GET,
-    middlewares: [ adminAuth({ roles: [ Role.ADMIN ] }) ],
+    middlewares: [ adminAuth() ],
     params: Joi.object({
       admin_id: Joi
         .number()
@@ -155,7 +156,7 @@ const routes: Route[] = [
     name: 'set config',
     path: '/config',
     method: RequestMethod.POST,
-    middlewares: [ adminAuth({ roles: [ Role.ADMIN ], power: Power.CONFIG }) ],
+    middlewares: [ adminAuth() ],
     params: Joi.object({
       web_status: Joi
           .number()
@@ -181,7 +182,7 @@ const routes: Route[] = [
     name: 'add config',
     path: '/config/add',
     method: RequestMethod.POST,
-    middlewares: [adminAuth({ roles: [ Role.ADMIN ], power: Power.CONFIG })],
+    middlewares: [adminAuth()],
     params: Joi.object({
       name: Joi
         .string()
@@ -198,7 +199,7 @@ const routes: Route[] = [
     name: 'update config',
     path: '/config',
     method: RequestMethod.PUT,
-    middlewares: [adminAuth({ roles: [ Role.ADMIN ], power: Power.CONFIG })],
+    middlewares: [adminAuth()],
     params: Joi.object({
       id: Joi
         .number()
@@ -215,21 +216,21 @@ const routes: Route[] = [
     name: 'get config',
     path: '/config',
     method: RequestMethod.GET,
-    middlewares: [adminAuth({ roles: [ Role.ADMIN ] })],
+    middlewares: [adminAuth()],
     action: admin.adminController.getWebsiteConfigList
   },
   {
     name: 'get config object',
     path: '/config/ob',
     method: RequestMethod.GET,
-    middlewares: [adminAuth({ roles: [ Role.ADMIN ] })],
+    middlewares: [adminAuth()],
     action: admin.adminController.getWebsite
   },
   {
     name: 'list admin ip',
     path: '/ip',
     method: RequestMethod.GET,
-    middlewares: [adminAuth({ roles: [ Role.ADMIN ] })],
+    middlewares: [adminAuth()],
     params: Joi.object({
       admin_id: Joi
         .number()
@@ -249,7 +250,7 @@ const routes: Route[] = [
     name: 'add admin ip',
     path: '/ip',
     method: RequestMethod.POST,
-    middlewares: [adminAuth({ roles: [ Role.ADMIN ], power: Power.IP })],
+    middlewares: [adminAuth()],
     params: Joi.object({
       admin_id: Joi
         .number()
@@ -264,7 +265,7 @@ const routes: Route[] = [
     name: 'remove admin ip',
     path: '/ip/:id',
     method: RequestMethod.DEL,
-    middlewares: [adminAuth({ roles: [ Role.ADMIN ], power: Power.IP })],
+    middlewares: [adminAuth()],
     action: admin.adminController.delAdminIp
   }
 ];

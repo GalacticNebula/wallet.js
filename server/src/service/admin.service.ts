@@ -9,9 +9,8 @@ import {
 } from '@store/index';
 import { captchas, hashPassword, is_testMode } from '@common/utils';
 import { Assert, Exception } from '@common/exceptions';
-import { Code, Power } from '@common/enums';
+import { Code } from '@common/enums';
 import { AdminModel } from '@models/admin.model';
-import { Role } from '@common/constants';
 
 class AdminService extends BaseService {
 
@@ -34,14 +33,14 @@ class AdminService extends BaseService {
     Assert(captchaChecked, Code.BAD_PARAMS, '图形验证码错误');
 
     const u = await adminStore.findByUsername(username);
-    if (!u) throw new Exception(Code.USERNAME_NOT_FOUND, '账户不存在');
+    if (!u) throw new Exception(Code.SERVER_ERROR, '账户不存在');
 
     const allowIps = u.allowIps.map(v => v.ip);
     if (!is_testMode() && !allowIps.includes(ip))
-      throw new Exception(Code.INVALID_IP, 'IP不允许被登录，请联系管理员.');
+      throw new Exception(Code.SERVER_ERROR, 'IP不允许被登录，请联系管理员.');
 
     const { locked, retries } = u;
-    Assert(!locked, Code.USER_LOCKED, '账户已锁定，请联系管理员');
+    Assert(!locked, Code.SERVER_ERROR, '账户已锁定，请联系管理员');
 
     await adminLogStore.add(u.id, AdminLogType.LOGIN, u.id, { username, ip });
 
@@ -82,12 +81,11 @@ class AdminService extends BaseService {
   public async addAdmin(admin_id: number, params: any) {
     const { username, password } = params;
     const exist = await adminStore.findByUsername(username);
-    Assert(!exist, Code.USER_EXIST, '用户已存在');
+    Assert(!exist, Code.SERVER_ERROR, '用户已存在');
 
     const admin = await adminStore.create({
       username,
-      password: hashPassword(password),
-      role: Role.ADMIN
+      password: hashPassword(password)
     });
 
     await adminLogStore.add(admin_id, AdminLogType.ADD_ADMIN, admin.id, { username });
@@ -105,8 +103,6 @@ class AdminService extends BaseService {
     const admin_id = _.get(admin, 'id');
     const { id, password, locked } = params;
     const data: any = {};
-
-    Assert(admin_id == id || (admin.power & Power.ADMIN_ACCOUNT) > 0, Code.OPERATION_FORBIDDEN, '权限不够');
 
     if (!_.isNil(password)) _.assign(data, { password: hashPassword(password) });
     if (!_.isNil(locked)) _.assign(data, { locked });

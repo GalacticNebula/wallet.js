@@ -315,7 +315,7 @@ const routes: Route[] = [
       token_id: Joi
         .number()
         .integer()
-        .requied(),
+        .required(),
       type: Joi
         .number()
         .integer()
