@@ -1,5 +1,5 @@
-import { userController } from './user.controller';
+import { apiController } from './api.controller';
 
-export const ant = {
-  userController
+export const api = {
+  apiController
 };
