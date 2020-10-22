@@ -1,9 +1,9 @@
 import _ from 'lodash';
-import { userWalletStore } from '@store/user_wallet.store';
 import { ethHelper } from '@helpers/index';
 import BaseService from './base.service';
 import { Exception } from '@common/exceptions';
 import { Code } from '@common/enums';
+import { tokenStore, chainStore, userWalletStore } from '@store/index';
 
 class ApiService extends BaseService {
 
@@ -29,91 +29,91 @@ class ApiService extends BaseService {
   }
 
   public listToken(params: any) {
-
+    return tokenStore.list();
   }
 
   public addToken(params: any) {
-
+    // TODO
   }
 
   public updateToken(params: any) {
-
+    // TODO
   }
 
   public listChain(params: any) {
-
+    return chainStore.list();
   }
 
   public updateChain(params: any) {
-
+    // TODO
   }
 
   public blockNumber(params: any) {
-
+    // TODO
   }
 
   public balance(params: any) {
-
+    // TODO
   }
 
   public withdraw(params: any) {
-
+    // TODO
   }
 
   public inside(params: any) {
-
+    // TODO
   }
 
   public listOrder(params: any) {
-
+    // TODO
   }
 
   public orderDetail(params: any) {
- 
+    // TODO
   }
 
   public listRecover(params: any) {
-
+    // TODO
   }
 
   public recoverDetail(params: any) {
-
+    // TODO
   }
 
   public sum(params: any) {
-
+    // TODO
   }
 
   public updateOrder(params: any) {
-
+    // TODO
   }
 
   public walletConfig(params: any) {
-
+    // TODO
   }
 
   public updateWithdrawAddress(params: any) {
-
+    // TODO
   }
 
   public updateCollectAddress(params: any) {
-
+    // TODO
   }
 
   public addGasAddress(params: any) {
-
+    // TODO
   }
 
   public removeGasAddress(params: any) {
-
+    // TODO
   }
 
   public listCallback(params: any) {
-
+    // TODO
   }
 
   public updateCallback(params: any) {
-
+    // TODO
   }
 
 }
