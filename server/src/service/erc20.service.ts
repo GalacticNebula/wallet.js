@@ -14,6 +14,23 @@ const web3 = new Web3(Web3.givenProvider || 'https://kovan.infura.io/v3/bd8e2359
 
 const timezone = 'Asia/Shanghai';
 
+function tryLock(name: string) {
+  return function(target: any, propertyName: string, descriptor: TypedPropertyDescriptor<(...args: any[]) => any>) {
+    const method = descriptor.value;
+    descriptor.value = async function(...args: any[]) {
+      if (!_.has(target, name)) throw new Exception(Code.SERVER_ERROR, `target without ${name}`);
+      if (target[name] == true)
+        return;
+
+      target[name] = true;
+
+      const result = await method!.apply(this, args);
+      target[name] = false;
+      return result;
+    };
+  };
+}
+
 export class Erc20Service extends BaseService {
 
   private deposit_lock = false;
@@ -42,22 +59,8 @@ export class Erc20Service extends BaseService {
     cron.schedule('*/30 * * * * *', async () => await self.confirm(), { timezone }).start();
   }
 
+  @tryLock('deposit_lock')
   public async deposit() {
-    if (this.deposit_lock)
-      return;
-
-    this.deposit_lock = true;
-
-    try {
-      await this.depositLocked();
-    } catch (e) {
-      logger.error(e.toString());
-    }
-
-    this.deposit_lock = false;
-  }
-
-  public async depositLocked() {
     const { token_id, token, config } = this;
     const status = await tokenStatusStore.findByTokenId(token_id);
     if (!status)
@@ -112,22 +115,8 @@ export class Erc20Service extends BaseService {
     await tokenStatusStore.setBlockId(this.token_id, id);
   }
 
+  @tryLock('confirm_lock')
   public async confirm() {
-    if (this.confirm_lock)
-      return;
-
-    this.confirm_lock = true;
-
-    try {
-      await this.confirmLocked();
-    } catch (e) {
-      logger.error(e.toString());
-    }
-
-    this.confirm_lock = false;
-  }
-
-  public async confirmLocked() {
     const orders = await orderStore.findAll({
       where: { state: [ OrderState.HASH, OrderState.WAIT_CONFIRM ] }
     });
