@@ -42,7 +42,8 @@ export class TokenModel extends BaseModel<TokenModel> {
   public state!: number;
 
   @Column({
-    allowNull: false
+    allowNull: false,
+    type: DataType.BIGINT
   })
   public limit_num!: number;
 
