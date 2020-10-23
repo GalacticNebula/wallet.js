@@ -14,9 +14,9 @@ export const erc20_configs: ERC20_CONFIG[] = [
   {
     symbol: 'USDT',
     abi: usdt_abi,
-    abi_from: '_from',
-    abi_to: '_to',
-    abi_value: '_value',
+    abi_from: 'from',
+    abi_to: 'to',
+    abi_value: 'value',
     step: 300
   }
 ];
