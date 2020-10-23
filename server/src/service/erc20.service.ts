@@ -1,6 +1,7 @@
 import _ from 'lodash';
 import Web3 from 'web3';
 import cron from 'node-cron';
+import moment from 'moment';
 import BaseService from './base.service';
 import { Code, OrderState, OrderType, OutOrIn } from "@common/enums";
 import { Exception } from "@common/exceptions";
@@ -96,7 +97,7 @@ export class Erc20Service extends BaseService {
         user_id: wallet.user_id,
         token_id,
         txid,
-        timestamp: Date.now(),
+        timestamp: moment(),
         out_or_in: OutOrIn.OUT,
         type: OrderType.RECHARGE,
         count,

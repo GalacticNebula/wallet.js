@@ -30,7 +30,7 @@ export class OrderModel extends BaseModel<OrderModel> {
   @Column({
     allowNull: false
   })
-  public timestamp!: number;
+  public timestamp!: Date;
 
   @Column({
     allowNull: false,
