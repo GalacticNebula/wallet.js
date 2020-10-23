@@ -1,6 +1,6 @@
 #!/bin/sh
 
-NAME=wallet
+NAME=walletjs
 
-docker container restart ${wallet}_api_1 && docker container restart ${wallet}_daemon_1
+docker container restart ${NAME}_api_1 && docker container restart ${NAME}_daemon_1
 

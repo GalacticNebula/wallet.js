@@ -11,7 +11,8 @@ const routes: Route[] = [
     name: 'timestamp',
     path: '/timestamp',
     method: RequestMethod.GET,
-    action: api.apiController.timestamp
+    action: api.apiController.timestamp,
+    isAttachment: true
   },
   {
     name: 'create wallet',
