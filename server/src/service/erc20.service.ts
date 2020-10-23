@@ -18,14 +18,13 @@ function tryLock(name: string) {
   return function(target: any, propertyName: string, descriptor: TypedPropertyDescriptor<(...args: any[]) => any>) {
     const method = descriptor.value;
     descriptor.value = async function(...args: any[]) {
-      if (!_.has(target, name)) throw new Exception(Code.SERVER_ERROR, `target without ${name}`);
-      if (target[name] == true)
+      if (!_.has(this, name)) throw new Exception(Code.SERVER_ERROR, `target without ${name}`);
+      if (_.get(this, name) == true)
         return;
 
-      target[name] = true;
-
+      _.set(this, 'name', true);
       const result = await method!.apply(this, args);
-      target[name] = false;
+      _.set(this, 'name', false);
       return result;
     };
   };
@@ -136,7 +135,6 @@ export class Erc20Service extends BaseService {
       if (!ob)
         continue;
 
-      console.log(ob);
       const { status } = ob;
       const done = await orderStore.finish(id, status);
       if (!done) logger.error(`finish ${id} ${status} failed`);
