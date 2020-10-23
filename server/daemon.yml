@@ -1,6 +1,3 @@
 apps:
   - script: './dist/daemon/cron.js'
     name: 'cron'
-
-  - script: './dist/daemon/worker.js'
-    name: 'worker'
