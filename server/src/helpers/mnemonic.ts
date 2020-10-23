@@ -1,7 +1,7 @@
 
 import * as bip39 from 'bip39';
 import { hdkey } from 'ethereumjs-wallet';
-//import * as util from 'ethereumjs-util';
+import * as util from 'ethereumjs-util';
 
 class Mnemonic {
   
@@ -16,7 +16,7 @@ class Mnemonic {
     const seed = await bip39.mnemonicToSeed(mnemonic);
     const hdWallet = hdkey.fromMasterSeed(seed);
     const key = hdWallet.derivePath(derivePath);
-    return key.getWallet().getAddressString();
+    return util.toChecksumAddress(key.getWallet().getAddressString());
   }
 
 }
