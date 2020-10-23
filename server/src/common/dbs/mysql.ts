@@ -30,7 +30,7 @@ const mysql = new Sequelize({
     timestamps: true,
     paranoid: false,
     underscored: true,
-    initialAutoIncrement: '10000',
+    //initialAutoIncrement: '10000',
     charset: 'utf8'
   },
 

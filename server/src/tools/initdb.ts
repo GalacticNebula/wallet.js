@@ -21,7 +21,7 @@ async function work() {
             decimals: 18,
             chain: 'eth',
             state: 1,
-            limit_num: 1000000000000000000
+            limit_num: 100000000
         },
         {
             symbol: 'USDT',

@@ -3,7 +3,7 @@ import { usdt_abi } from "./abi";
 
 export interface ERC20_CONFIG {
   symbol: string;
-  abi: Object;
+  abi: any;
   abi_from: string;
   abi_to: string;
   abi_value: string;
