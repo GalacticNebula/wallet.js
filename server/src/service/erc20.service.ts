@@ -17,6 +17,7 @@ const timezone = 'Asia/Shanghai';
 export class Erc20Service extends BaseService {
 
   private deposit_lock = false;
+  private confirm_lock = false;
   private token_id: number;
 
   constructor(private token: TokenModel, private config: ERC20_CONFIG) {
@@ -38,6 +39,7 @@ export class Erc20Service extends BaseService {
   public init() {
     const self = this;
     cron.schedule('*/20 * * * * *', async () => await self.deposit(), { timezone }).start();
+    cron.schedule('*/30 * * * * *', async () => await self.confirm(), { timezone }).start();
   }
 
   public async deposit() {
@@ -110,15 +112,53 @@ export class Erc20Service extends BaseService {
     await tokenStatusStore.setBlockId(this.token_id, id);
   }
 
-  public async withdraw() {
+  public async confirm() {
+    if (this.confirm_lock)
+      return;
 
+    this.confirm_lock = true;
+
+    try {
+      await this.confirmLocked();
+    } catch (e) {
+      logger.error(e.toString());
+    }
+
+    this.confirm_lock = false;
+  }
+
+  public async confirmLocked() {
+    const orders = await orderStore.findAll({
+      where: { state: [ OrderState.HASH, OrderState.WAIT_CONFIRM ] }
+    });
+
+    for (let i = 0; i < orders.length; i++) {
+      const order = orders[i];
+      const { id, state, type, txid } = order;
+      if (state == OrderState.HASH) {
+        const ob = await web3.eth.getTransaction(txid);
+        if (!_.isNil(ob.blockNumber)) {
+          const up = await orderStore.waitConfirm(id, ob.blockNumber);
+          if (!up) logger.error(`wait confirm ${id} failed`);
+        }
+      }
+
+      const ob = await web3.eth.getTransactionReceipt(txid);
+      if (!ob)
+        continue;
+
+      console.log(ob);
+      const { status } = ob;
+      const done = await orderStore.finish(id, status);
+      if (!done) logger.error(`finish ${id} ${status} failed`);
+    }
   }
 
   public async collect() {
 
   }
 
-  public async confirm() {
+  public async withdraw() {
 
   }
 
