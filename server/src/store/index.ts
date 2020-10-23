@@ -6,3 +6,5 @@ export * from './admin_allow_ip.store';
 export * from './user_wallet.store';
 export * from './chain.store';
 export * from './token.store';
+export * from './token_status.store';
+export * from './order.store';

@@ -1,5 +1,5 @@
 
-export const erc20_usdt_abi = [{
+export const usdt_abi = [{
     "constant": true,
     "inputs": [],
     "name": "name",

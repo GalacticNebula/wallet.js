@@ -2,7 +2,11 @@ import { Table, Column, DataType } from 'sequelize-typescript';
 import BaseModel from './base';
 
 @Table({
-  tableName: 'order'
+  tableName: 'order',
+  indexes: [
+    { name: 'txid-token_id', fields: ['txid','token_id'], unique: true },
+    { name: 'uid', fields: ['user_id'] }
+  ]
 })
 export class OrderModel extends BaseModel<OrderModel> {
 

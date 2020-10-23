@@ -1,7 +1,7 @@
 import { process_init } from '../common/utils/process_init';
 process_init();
 import { sequelize } from '@common/dbs';
-import { chainRepository, configRepository, tokenRepository } from '@models/index';
+import { chainRepository, configRepository, tokenRepository, tokenStatusRepository } from '@models/index';
 
 async function work() {
     await sequelize.sync({ force: true });
@@ -31,6 +31,17 @@ async function work() {
             chain: 'eth',
             state: 1,
             limit_num: 1000000
+        }
+    ]);
+
+    await tokenStatusRepository.bulkCreate([
+        {
+            token_id: 1,
+            block_id: 0
+        },
+        {
+            token_id: 2,
+            block_id: 0
         }
     ]);
 

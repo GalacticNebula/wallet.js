@@ -8,6 +8,10 @@ class UserWalletStore extends BaseStore {
     return userWalletRepository.findOne({ where: { user_id } });
   }
 
+  public findOne(options: any) {
+    return userWalletRepository.findOne(options);
+  }
+
   public upsert(data: any) {
     return userWalletRepository.upsert(data);
   }

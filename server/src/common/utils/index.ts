@@ -9,4 +9,4 @@ export * from './captcha.util';
 export * from './precision.util';
 export * from './crypto.util';
 export * from './env.util';
-export * from './sms.util';
+export * from './other.util';

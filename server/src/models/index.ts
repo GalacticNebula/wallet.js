@@ -12,6 +12,7 @@ import { CallbackModel } from './callback.model';
 import { ChainModel } from './chain.model';
 import { RecoverModel } from './recover.model';
 import { TokenModel } from './token.model';
+import { TokenStatusModel } from './token_status.model';
 
 export const adminRepository = mysql.getRepository(AdminModel);
 export const adminSessionRepository = mysql.getRepository(AdminSessionModel);
@@ -25,3 +26,4 @@ export const callbackRepository = mysql.getRepository(CallbackModel);
 export const chainRepository = mysql.getRepository(ChainModel);
 export const recoverRepository = mysql.getRepository(RecoverModel);
 export const tokenRepository = mysql.getRepository(TokenModel);
+export const tokenStatusRepository = mysql.getRepository(TokenStatusModel);
