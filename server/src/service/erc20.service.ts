@@ -209,7 +209,7 @@ export class Erc20Service extends BaseService {
 
     try {
     const tx = await web3.eth
-      .sendSignedTransaction(signedTx.rawTransaction)
+      .sendSignedTransaction(signedTx.rawTransaction || '')
       .on('transactionHash', async (txid: string) => {
         await orderStore.hash(id, txid);
       });
