@@ -198,10 +198,10 @@ export class Erc20Service extends BaseService {
       return;
     }
 
-    const { privateKey } = address;
+    const { private_key } = address;
     for (let i = 0; i < orders.length; i++) {
       const order = orders[i];
-      await this.withdrawOne(order, privateKey);
+      await this.withdrawOne(order, private_key);
     }
   }
 
@@ -275,10 +275,10 @@ export class Erc20Service extends BaseService {
       return;
     }
 
-    const { privateKey } = gasAddress;
+    const { private_key } = gasAddress;
     for (let i = 0; i < cnt; i++) {
       const order = orders[i];
-      await this.payFeeOne(order, gasAddress, privateKey, collectAddress);
+      await this.payFeeOne(order, gasAddress.address, private_key, collectAddress.address);
     }
   }
 
@@ -296,8 +296,8 @@ export class Erc20Service extends BaseService {
     const gasFee = web3.utils.toBN(gasLimit).mul(web3.utils.toBN(gasPrice));
 
     const gasBalance = web3.utils.toBN(await web3.eth.getBalance(gasAddress));
-    if (gasBalance.lt(gasFee.mul(2))) {
-      logger.error(`gas ${gasAddress} not enough ${gasBalance} < ${gasFee.mul(2)}`);
+    if (gasBalance.lt(gasFee.mul(web3.utils.toBN(2)))) {
+      logger.error(`gas ${gasAddress} not enough ${gasBalance} < ${gasFee.mul(web3.utils.toBN(2))}`);
       return;
     }
 
@@ -310,7 +310,7 @@ export class Erc20Service extends BaseService {
 
     try {
       await web3.eth
-        .sendSignedTransaction(signedTx.rawTransaction)
+        .sendSignedTransaction(signedTx.rawTransaction || '')
         .on('transactionHash', async (hash: string) => {
           await orderStore.collectHash(id, hash, gasLimit, gasPrice);
         });
@@ -347,7 +347,7 @@ export class Erc20Service extends BaseService {
           order_id: order.id,
           value: count,
           from_address: from,
-          to_address: collectAddress,
+          to_address: collectAddress.address,
           timestamp: moment()
         },
         where: { order_id: order.id }
@@ -383,7 +383,7 @@ export class Erc20Service extends BaseService {
 
     const ethBalance = await web3.eth.getBalance(from);
     if (web3.utils.toBN(ethBalance).lt(gasFee)) {
-      logger.error(`collect ${from} balance not enough ${ethBalance} < ${gasFee}`);
+      //logger.error(`collect ${from} balance not enough ${ethBalance} < ${gasFee}`);
       return;
     }
 

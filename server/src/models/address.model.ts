@@ -24,6 +24,6 @@ export class AddressModel extends BaseModel<AddressModel> {
   public address!: string;
 
   @Column
-  public privateKey!: string;
+  public private_key!: string;
 
 }
