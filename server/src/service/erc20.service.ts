@@ -191,9 +191,7 @@ export class Erc20Service extends BaseService {
     const txData = method.encodeABI();
     const gasLimit = await method.estimateGas({ from: from_address });
     const gasPrice = await web3.eth.getGasPrice();
-
-    const price = web3.utils.toBN(gasPrice).add(web3.utils.toBN(30000000000)).toString();
-    const gasFee = web3.utils.toBN(gasLimit).mul(web3.utils.toBN(price));
+    const gasFee = web3.utils.toBN(gasLimit).mul(web3.utils.toBN(gasPrice));
 
     const ethBalance = await web3.eth.getBalance(from_address);
     if (web3.utils.toBN(ethBalance).lt(gasFee)) {
@@ -203,7 +201,7 @@ export class Erc20Service extends BaseService {
 
     const signedTx = await web3.eth.accounts.signTransaction({
       gas: gasLimit,
-      gasPrice: price,
+      gasPrice,
       nonce,
       to: contract.options.address,
       data: txData
