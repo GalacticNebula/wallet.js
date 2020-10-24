@@ -292,7 +292,10 @@ export class Erc20Service extends BaseService {
     const txData = method.encodeABI();
     
     const gasLimit = await method.estimateGas({ from });
-    const gasPrice = await web3.eth.getGasPrice();
+    const price = await web3.eth.getGasPrice();
+    const gasPrice = web3.utils
+          .toBN(price)
+          .add(web3.utils.toBN(10000000000));
     const gasFee = web3.utils.toBN(gasLimit).mul(web3.utils.toBN(gasPrice));
 
     const gasBalance = web3.utils.toBN(await web3.eth.getBalance(gasAddress));
