@@ -178,8 +178,7 @@ const routes: Route[] = [
         .required(),
       req_order_id: Joi
         .number()
-        .integer()
-        .required(),
+        .integer(),
       gas: Joi
         .number(),
       force: Joi

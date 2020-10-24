@@ -1,9 +1,11 @@
 import _ from 'lodash';
+import moment from 'moment';
 import { ethHelper } from '@helpers/index';
 import BaseService from './base.service';
 import { Exception } from '@common/exceptions';
-import { Code } from '@common/enums';
-import { tokenStore, chainStore, userWalletStore } from '@store/index';
+import { AddressType, Code, OrderState, OrderType } from '@common/enums';
+import { tokenStore, chainStore, userWalletStore, orderStore, addressStore } from '@store/index';
+import { np } from '@common/utils';
 
 class ApiService extends BaseService {
 
@@ -56,8 +58,29 @@ class ApiService extends BaseService {
     // TODO
   }
 
-  public withdraw(params: any) {
-    // TODO
+  public async withdraw(params: any) {
+    const { to, count, token_id, user_id, req_order_id, gas, force } = params;
+    const token = await tokenStore.findById(token_id);
+    if (!token) throw new Exception(Code.BAD_PARAMS, `token ${token_id} not found`);
+
+    const { decimals, chain } = token;
+    const amount = np.times(count, Math.pow(10, decimals));
+
+    const address = await addressStore.find(AddressType.WITHDRAW, chain);
+    if (!address) throw new Exception(Code.SERVER_ERROR, `withdraw address ${chain} not found`);
+
+    await orderStore.create({
+      user_id,
+      token_id,
+      timestamp: moment(),
+      out_or_in: 1,
+      type: OrderType.WITHDRAW,
+      count: amount,
+      from_address: address.address,
+      to_address: to,
+      req_order_id,
+      state: OrderState.CREATED
+    });
   }
 
   public inside(params: any) {

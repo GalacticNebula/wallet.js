@@ -45,9 +45,17 @@ export class OrderModel extends BaseModel<OrderModel> {
   public type!: number;
 
   @Column({
-    allowNull: false
+    allowNull: false,
+    type: DataType.BIGINT
   })
   public count!: number;
+
+  @Column({
+    allowNull: false,
+    type: DataType.STRING(128),
+    defaultValue: ''
+  })
+  public from_address!: string;
 
   @Column({
     allowNull: false,

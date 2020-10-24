@@ -38,6 +38,27 @@ class OrderStore extends BaseStore {
     return rows === 1;
   }
 
+  public async hash(id: number, txid: string) {
+    const [ rows ] = await orderRepository.update({
+      state: OrderState.HASH,
+      txid
+    }, {
+      where: { id, state: OrderState.CREATED }
+    });
+
+    return rows === 1;
+  }
+
+  public async hashFail(id: number) {
+    const [ rows ] = await orderRepository.update({
+      state: OrderState.HASH_FAILED
+    }, {
+      where: { id, state: OrderState.CREATED }
+    });
+
+    return rows === 1;
+  }
+
 }
 
 export const orderStore = new OrderStore();
