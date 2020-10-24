@@ -29,6 +29,12 @@ export enum OrderState {
   WAIT_CONFIRM = 5,     // 交易已经上链，等待达到确认数
 }
 
+export enum OrderCollectState {
+  NONE = 0,
+  HASH = 1,
+  DONE = 2
+}
+
 export enum ChainType {
   ETH = 'eth',
   BTC = 'btc',

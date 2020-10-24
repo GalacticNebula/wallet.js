@@ -1,7 +1,7 @@
 import _ from 'lodash';
 import BaseStore from './base.store';
 import { orderRepository } from '@models/index';
-import { OrderState } from '@common/enums';
+import { OrderCollectState, OrderState } from '@common/enums';
 
 class OrderStore extends BaseStore {
 
@@ -54,6 +54,29 @@ class OrderStore extends BaseStore {
       state: OrderState.HASH_FAILED
     }, {
       where: { id, state: OrderState.CREATED }
+    });
+
+    return rows === 1;
+  }
+
+  public async collectHash(id: number, collect_hash: string, collect_gas_limit: number, collect_gas_price: string) {
+    const [ rows ] = await orderRepository.update({
+      collect_hash,
+      collect_gas_limit,
+      collect_gas_price,
+      collect_state: OrderCollectState.HASH
+    }, {
+      where: { id }
+    });
+
+    return rows === 1;
+  }
+
+  public async recovery(id: number) {
+    const [ rows ] = await orderRepository.update({
+      collect_state: OrderCollectState.DONE
+    }, {
+      where: { id }
     });
 
     return rows === 1;

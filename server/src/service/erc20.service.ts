@@ -3,13 +3,15 @@ import Web3 from 'web3';
 import cron from 'node-cron';
 import moment from 'moment';
 import BaseService from './base.service';
-import { AddressType, Code, OrderState, OrderType, OutOrIn } from "@common/enums";
+import { AddressType, Code, OrderCollectState, OrderState, OrderType, OutOrIn } from "@common/enums";
 import { Exception } from "@common/exceptions";
 import { TokenModel } from "@models/token.model";
-import { addressStore, orderStore, tokenStatusStore, tokenStore, userWalletStore } from "@store/index";
+import { addressStore, orderStore, recoverStore, tokenStatusStore, tokenStore, userWalletStore } from "@store/index";
 import { ERC20_CONFIG, findErc20Config } from '@config/erc20';
 import { logger, min } from '@common/utils';
 import { OrderModel } from '@models/order.model';
+import { ethHelper } from '@helpers/index';
+import { RecoverModel } from '@models/recover.model';
 
 const web3 = new Web3(Web3.givenProvider || 'https://kovan.infura.io/v3/bd8e235958e54c08a0cc78d34d26612a');
 
@@ -37,6 +39,7 @@ export class Erc20Service extends BaseService {
   private confirm_lock = false;
   private withdraw_lock = false;
   private collect_lock = false;
+  private payfee_lock = false;
   private token_id: number;
 
   constructor(private token: TokenModel, private config: ERC20_CONFIG) {
@@ -60,6 +63,8 @@ export class Erc20Service extends BaseService {
     cron.schedule('*/20 * * * * *', async () => await self.deposit(), { timezone }).start();
     cron.schedule('*/30 * * * * *', async () => await self.confirm(), { timezone }).start();
     cron.schedule('*/10 * * * * *', async () => await self.withdraw(), { timezone }).start();
+    cron.schedule('*/2 * * * * *', async () => await self.collect(), { timezone }).start();
+    cron.schedule('*/59 * * * * *', async () => await self.payFee(), { timezone }).start();
   }
 
   @tryLock('deposit_lock')
@@ -128,7 +133,7 @@ export class Erc20Service extends BaseService {
 
     for (let i = 0; i < orders.length; i++) {
       const order = orders[i];
-      const { id, state, type, txid } = order;
+      const { id, state, txid } = order;
       if (state == OrderState.HASH) {
         const ob = await web3.eth.getTransaction(txid);
         if (!_.isNil(ob.blockNumber)) {
@@ -144,6 +149,33 @@ export class Erc20Service extends BaseService {
       const { status } = ob;
       const done = await orderStore.finish(id, status);
       if (!done) logger.error(`finish ${id} ${status} failed`);
+    }
+
+    const recovers = await recoverStore.findAll({
+      where: { token_id, state: [ OrderState.HASH, OrderState.WAIT_CONFIRM ] }
+    });
+
+    for (let i = 0; i < recovers.length; i++) {
+      const recover = recovers[i];
+      const { id, order_id, state, txid } = recover;
+      if (state == OrderState.HASH) {
+        const ob = await web3.eth.getTransaction(txid);
+        if (!_.isNil(ob.blockNumber)) {
+          const up = await recoverStore.waitConfirm(id, ob.blockNumber);
+          if (!up) logger.error(`recover wait confirm ${id} failed`);
+        }
+      }
+
+      const ob = await web3.eth.getTransactionReceipt(txid);
+      if (!ob)
+        continue;
+
+      const { status } = ob;
+      const done = await recoverStore.finish(id, status);
+      if (!done) logger.error(`recover finish ${id} ${status} failed`);
+
+      if (status)
+        await orderStore.recovery(order_id);
     }
   }
 
@@ -219,9 +251,160 @@ export class Erc20Service extends BaseService {
     }
   }
 
+  @tryLock('payfee_lock')
+  public async payFee() {
+    const { token_id } = this;
+    const orders = await orderStore.findAll({
+      where: { token_id, type: OrderType.RECHARGE, state: OrderState.CONFIRM, collect_state: OrderCollectState.NONE },
+      limit: 20
+    });
+
+    const cnt = _.size(orders);
+    if (0 == cnt)
+      return;
+
+    const gasAddress = await addressStore.find(AddressType.GAS, 'eth');
+    if (!gasAddress) {
+      logger.error(`eth gas address not found`);
+      return;
+    }
+
+    const collectAddress = await addressStore.find(AddressType.COLLECT, 'eth');
+    if (!collectAddress) {
+      logger.error(`eth collect address not found`);
+      return;
+    }
+
+    const { privateKey } = gasAddress;
+    for (let i = 0; i < cnt; i++) {
+      const order = orders[i];
+      await this.payFeeOne(order, gasAddress, privateKey, collectAddress);
+    }
+  }
+
+  public async payFeeOne(order: OrderModel, gasAddress: string, privateKey: string, collectAddress: string) {
+    const id = _.get(order, 'id');
+    const { count, to_address: from } = order;
+    const { token, config } = this;
+    const { abi } = config;
+    const contract = new web3.eth.Contract(abi, token.address);
+    const method = contract.methods.transfer(collectAddress, count);
+    const txData = method.encodeABI();
+    
+    const gasLimit = await method.estimateGas({ from });
+    const gasPrice = await web3.eth.getGasPrice();
+    const gasFee = web3.utils.toBN(gasLimit).mul(web3.utils.toBN(gasPrice));
+
+    const gasBalance = web3.utils.toBN(await web3.eth.getBalance(gasAddress));
+    if (gasBalance.lt(gasFee.mul(2))) {
+      logger.error(`gas ${gasAddress} not enough ${gasBalance} < ${gasFee.mul(2)}`);
+      return;
+    }
+
+    const signedTx = await web3.eth.accounts.signTransaction({
+      gas: gasLimit,
+      gasPrice,
+      to: collectAddress,
+      value: gasFee.toString()
+    }, privateKey);
+
+    try {
+      await web3.eth
+        .sendSignedTransaction(signedTx.rawTransaction)
+        .on('transactionHash', async (hash: string) => {
+          await orderStore.collectHash(id, hash, gasLimit, gasPrice);
+        });
+    } catch (e) {
+      logger.error(`order ${id} collect hash failed, ${e.toString()}`);
+    }
+  }
+
   @tryLock('collect_lock')
   public async collect() {
+    const { token_id } = this;
+    const orders = await orderStore.findAll({
+      where: { token_id, type: OrderType.RECHARGE, state: OrderState.CONFIRM, collect_state: OrderCollectState.HASH },
+      limit: 20
+    });
 
+    const cnt = _.size(orders);
+    if (0 == cnt)
+      return;
+
+    const collectAddress = await addressStore.find(AddressType.COLLECT, 'eth');
+    if (!collectAddress) {
+      logger.error(`eth collect address not found`);
+      return;
+    }
+
+    for (let i = 0; i < cnt; i++) {
+      const order = orders[i];
+      const { user_id, count, to_address: from } = order;
+      const [ recover, created ] = await recoverStore.findOrCreate({
+        defaults: {
+          user_id,
+          token_id,
+          order_id: order.id,
+          value: count,
+          from_address: from,
+          to_address: collectAddress,
+          timestamp: moment()
+        },
+        where: { order_id: order.id }
+      });
+
+      if (created)
+        continue;
+
+      await this.collectOne(order, recover);
+    }
+  }
+
+  public async collectOne(order: OrderModel, recover: RecoverModel) {
+    const recover_id = _.get(recover, 'id');
+    const { user_id, count, to_address: from, collect_gas_limit: gasLimit, collect_gas_price: gasPrice } = order;
+    const { to_address: to } = recover;
+    const { token, config } = this;
+    const { abi } = config;
+    const contract = new web3.eth.Contract(abi, token.address);
+
+    const privateKey = await ethHelper.privateKey(user_id);
+
+    const nonce = await web3.eth.getTransactionCount(from);
+    const balance = await contract.methods.balanceOf(from).call();
+    if (balance < count) {
+      logger.error(`collect ${from} balance not enough ${count}`);
+      return;
+    }
+
+    const method = contract.methods.transfer(to, count);
+    const txData = method.encodeABI();
+    const gasFee = web3.utils.toBN(gasLimit).mul(web3.utils.toBN(gasPrice));
+
+    const ethBalance = await web3.eth.getBalance(from);
+    if (web3.utils.toBN(ethBalance).lt(gasFee)) {
+      logger.error(`collect ${from} balance not enough ${ethBalance} < ${gasFee}`);
+      return;
+    }
+
+    const signedTx = await web3.eth.accounts.signTransaction({
+      gas: gasLimit,
+      gasPrice,
+      nonce,
+      to: contract.options.address,
+      data: txData
+    }, privateKey);
+
+    try {
+    const tx = await web3.eth
+      .sendSignedTransaction(signedTx.rawTransaction || '')
+      .on('transactionHash', async (txid: string) => {
+        await recoverStore.hash(recover_id, txid);
+      });
+    } catch (e) {
+      await recoverStore.hashFail(recover_id);
+      logger.error(`recover order ${recover_id} hash failed, ${e.toString()}`);
+    }
   }
 
 }
