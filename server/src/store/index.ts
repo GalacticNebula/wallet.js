@@ -10,3 +10,4 @@ export * from './token_status.store';
 export * from './order.store';
 export * from './recover.store';
 export * from './address.store';
+export * from './fee.store';

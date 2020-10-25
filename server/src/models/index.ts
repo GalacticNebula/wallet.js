@@ -11,6 +11,7 @@ import { AddressModel } from './address.model';
 import { CallbackModel } from './callback.model';
 import { ChainModel } from './chain.model';
 import { RecoverModel } from './recover.model';
+import { FeeModel } from './fee.model';
 import { TokenModel } from './token.model';
 import { TokenStatusModel } from './token_status.model';
 
@@ -25,5 +26,6 @@ export const addressRepository = mysql.getRepository(AddressModel);
 export const callbackRepository = mysql.getRepository(CallbackModel);
 export const chainRepository = mysql.getRepository(ChainModel);
 export const recoverRepository = mysql.getRepository(RecoverModel);
+export const feeRepository = mysql.getRepository(FeeModel);
 export const tokenRepository = mysql.getRepository(TokenModel);
 export const tokenStatusRepository = mysql.getRepository(TokenStatusModel);

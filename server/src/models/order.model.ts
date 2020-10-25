@@ -98,22 +98,6 @@ export class OrderModel extends BaseModel<OrderModel> {
 
   @Column({
     allowNull: false,
-    defaultValue: 0
-  })
-  public collect_gas_limit!: number;
-
-  @Column({
-    type: DataType.STRING(32)
-  })
-  public collect_gas_price!: string;
-
-  @Column({
-    type: DataType.STRING(128)
-  })
-  public collect_hash!: string;
-
-  @Column({
-    allowNull: false,
     type: DataType.TINYINT,
     defaultValue: 0
   })

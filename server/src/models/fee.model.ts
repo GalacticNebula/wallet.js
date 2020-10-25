@@ -8,7 +8,7 @@ import BaseModel from './base';
     { name: 'uid', fields: ['user_id'] }
   ]
 })
-export class RecoverModel extends BaseModel<RecoverModel> {
+export class FeeModel extends BaseModel<FeeModel> {
 
   @Column({
     allowNull: false

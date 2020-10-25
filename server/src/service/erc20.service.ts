@@ -4,16 +4,20 @@ import cron from 'node-cron';
 import moment from 'moment';
 import BaseService from './base.service';
 import { AddressType, Code, OrderCollectState, OrderState, OrderType, OutOrIn } from "@common/enums";
-import { Exception } from "@common/exceptions";
+import { Assert, Exception } from "@common/exceptions";
 import { TokenModel } from "@models/token.model";
-import { addressStore, orderStore, recoverStore, tokenStatusStore, tokenStore, userWalletStore } from "@store/index";
+import { addressStore, feeStore, orderStore, recoverStore, tokenStatusStore, tokenStore, userWalletStore } from "@store/index";
 import { ERC20_CONFIG, findErc20Config } from '@config/erc20';
 import { logger, min } from '@common/utils';
 import { OrderModel } from '@models/order.model';
 import { ethHelper } from '@helpers/index';
 import { RecoverModel } from '@models/recover.model';
+import { sequelize } from '@common/dbs';
+import { FeeModel } from '@models/fee.model';
 
 const web3 = new Web3(Web3.givenProvider || 'https://kovan.infura.io/v3/bd8e235958e54c08a0cc78d34d26612a');
+
+const toBN = web3.utils.toBN;
 
 const timezone = 'Asia/Shanghai';
 
@@ -41,6 +45,7 @@ export class Erc20Service extends BaseService {
   private collect_lock = false;
   private payfee_lock = false;
   private token_id: number;
+  private contract: any;
 
   constructor(private token: TokenModel, private config: ERC20_CONFIG) {
     super();
@@ -61,22 +66,23 @@ export class Erc20Service extends BaseService {
   public init() {
     const self = this;
 
-    cron.schedule('*/20 * * * * *', async () => await self.deposit(), { timezone }).start();
-    cron.schedule('*/30 * * * * *', async () => await self.confirm(), { timezone }).start();
+    this.contract = new web3.eth.Contract(this.config.abi, this.token.address);
+
+    cron.schedule('*/8 * * * * *', async () => await self.deposit(), { timezone }).start();
+    cron.schedule('*/15 * * * * *', async () => await self.confirm(), { timezone }).start();
     cron.schedule('*/10 * * * * *', async () => await self.withdraw(), { timezone }).start();
-    cron.schedule('5 * * * * *', async () => await self.collect(), { timezone }).start();
-    cron.schedule('* * * * *', async () => await self.payFee(), { timezone }).start();
+    cron.schedule('6,21,36,51 * * * * *', async () => await self.collect(), { timezone }).start();
+    cron.schedule('3,18,33,48 * * * *', async () => await self.payFee(), { timezone }).start();
   }
 
   @tryLock('deposit_lock')
   public async deposit() {
-    const { token_id, token, config } = this;
+    const { token_id, config, contract } = this;
     const status = await tokenStatusStore.findByTokenId(token_id);
     if (!status)
       return;
 
-    const { step, abi, abi_from, abi_to, abi_value } = config;
-    const contract = new web3.eth.Contract(abi, token.address);
+    const { step, abi_from, abi_to, abi_value } = config;
     
     const blockIndex = status.block_id + 1;
     let id = await web3.eth.getBlockNumber();
@@ -125,8 +131,7 @@ export class Erc20Service extends BaseService {
     await tokenStatusStore.setBlockId(this.token_id, id);
   }
 
-  @tryLock('confirm_lock')
-  public async confirm() {
+  private async confirmOrders() {
     const { token_id } = this;
     const orders = await orderStore.findAll({
       where: { token_id, state: [ OrderState.HASH, OrderState.WAIT_CONFIRM ] }
@@ -151,7 +156,61 @@ export class Erc20Service extends BaseService {
       const done = await orderStore.finish(id, status);
       if (!done) logger.error(`finish ${id} ${status} failed`);
     }
+  }
 
+  private async confirmFee() {
+    const { token_id } = this;
+    const fees = await feeStore.findAll({
+      where: { token_id, state: [ OrderState.HASH, OrderState.WAIT_CONFIRM ] }
+    });
+
+    const collectAddress = await addressStore.find(AddressType.COLLECT, 'eth');
+    if (!collectAddress) {
+      logger.error(`eth collect address not found`);
+      return;
+    }
+
+    for (let i = 0; i < fees.length; i++) {
+      const fee = fees[i];
+      const { id, user_id, order_id, state, txid } = fee;
+      if (state == OrderState.HASH) {
+        const ob = await web3.eth.getTransaction(txid);
+        if (!_.isNil(ob.blockNumber)) {
+          const up = await feeStore.waitConfirm(id, ob.blockNumber);
+          if (!up) logger.error(`fee wait confirm ${id} failed`);
+        }
+      }
+
+      const ob = await web3.eth.getTransactionReceipt(txid);
+      if (!ob)
+        continue;
+
+      const { status } = ob;
+      const done = await feeStore.finish(id, status);
+      if (!done) logger.error(`fee finish ${id} ${status} failed`);
+
+      if (!status)
+        continue;
+        
+      const order = await orderStore.findById(order_id);
+      if (!order)
+        continue;
+
+      const { count, to_address: from } = order;
+
+      const recover = await recoverStore.create({
+        user_id,
+        token_id,
+        order_id,
+        value: count,
+        from_address: from,
+        to_address: collectAddress.address
+      });
+    }
+  }
+
+  private async confirmRecovery() {
+    const { token_id } = this;
     const recovers = await recoverStore.findAll({
       where: { token_id, state: [ OrderState.HASH, OrderState.WAIT_CONFIRM ] }
     });
@@ -176,8 +235,15 @@ export class Erc20Service extends BaseService {
       if (!done) logger.error(`recover finish ${id} ${status} failed`);
 
       if (status)
-        await orderStore.recovery(order_id);
+        await orderStore.collected(order_id);
     }
+  }
+
+  @tryLock('confirm_lock')
+  public async confirm() {
+    await this.confirmOrders();
+    await this.confirmFee();
+    await this.confirmRecovery();
   }
 
   @tryLock('withdraw_lock')
@@ -207,28 +273,26 @@ export class Erc20Service extends BaseService {
   }
 
   public async withdrawOne(order: OrderModel, privateKey: string) {
-    const id = _.get(order, 'id');
-    const { from_address, to_address, count } = order;
-    const { token, config } = this;
-    const { abi } = config;
-    const contract = new web3.eth.Contract(abi, token.address);
+    const order_id = _.get(order, 'id');
+    const { from_address: from, to_address: to, count } = order;
+    const { contract } = this;
 
-    const nonce = await web3.eth.getTransactionCount(from_address);
-    const balance = await contract.methods.balanceOf(from_address).call();
+    const nonce = await web3.eth.getTransactionCount(from);
+    const balance = await contract.methods.balanceOf(from).call();
     if (balance < count) {
-      logger.error(`${from_address} balance not enough ${count}`);
+      logger.error(`${from} balance not enough ${count}`);
       return;
     }
 
-    const method = contract.methods.transfer(to_address, count);
+    const method = contract.methods.transfer(to, count);
     const txData = method.encodeABI();
-    const gasLimit = await method.estimateGas({ from: from_address });
+    const gasLimit = await method.estimateGas({ from });
     const gasPrice = await web3.eth.getGasPrice();
-    const gasFee = web3.utils.toBN(gasLimit).mul(web3.utils.toBN(gasPrice));
+    const gasFee = toBN(gasLimit).mul(toBN(gasPrice));
 
-    const ethBalance = await web3.eth.getBalance(from_address);
-    if (web3.utils.toBN(ethBalance).lt(gasFee)) {
-      logger.error(`${from_address} balance not enough ${ethBalance} < ${gasFee}`);
+    const ethBalance = await web3.eth.getBalance(from);
+    if (toBN(ethBalance).lt(gasFee)) {
+      logger.error(`${from} balance not enough ${ethBalance} < ${gasFee}`);
       return;
     }
 
@@ -244,11 +308,11 @@ export class Erc20Service extends BaseService {
     const tx = await web3.eth
       .sendSignedTransaction(signedTx.rawTransaction || '')
       .on('transactionHash', async (txid: string) => {
-        await orderStore.hash(id, txid);
+        await orderStore.hash(order_id, txid);
       });
     } catch (e) {
-      await orderStore.hashFail(id);
-      logger.error(`order ${id} hash failed, ${e.toString()}`);
+      await orderStore.hashFail(order_id);
+      logger.error(`order ${order_id} hash failed, ${e.toString()}`);
     }
   }
 
@@ -256,7 +320,7 @@ export class Erc20Service extends BaseService {
   public async payFee() {
     const { token_id } = this;
     const orders = await orderStore.findAll({
-      where: { token_id, type: OrderType.RECHARGE, state: OrderState.CONFIRM, collect_state: OrderCollectState.NONE },
+      where: { token_id, type: OrderType.RECHARGE, state: OrderState.CONFIRM, collect_state: 0 },
       limit: 20
     });
 
@@ -273,18 +337,39 @@ export class Erc20Service extends BaseService {
     const { private_key } = gasAddress;
     for (let i = 0; i < cnt; i++) {
       const order = orders[i];
-      await this.payFeeOne(order, gasAddress.address, private_key);
+      const order_id = order.id;
+      const { user_id, token_id, to_address } = order;
+
+      let fee;
+      let transaction;
+      try {
+        transaction = await sequelize.transaction();
+
+        const up  = await orderStore.fee(order.id, transaction);
+        Assert(up, Code.SERVER_ERROR, `order ${order.id} fee failed`);
+
+        fee = await feeStore.create({
+          user_id,
+          token_id,
+          order_id,
+          value: 0,
+          from_address: gasAddress.address,
+          to_address
+        }, transaction);
+        
+        await transaction.commit();
+      } catch (e) {
+        await transaction?.rollback()
+        continue;
+      }
+
+      await this.payFeeOne(fee, private_key);
     }
   }
 
-  public async payFeeOne(order: OrderModel, from: string, privateKey: string) {
-    const id = _.get(order, 'id');
-    const { count, to_address: to } = order;
-    const { token, config } = this;
-    const { abi } = config;
-    const contract = new web3.eth.Contract(abi, token.address);
-    const method = contract.methods.transfer(to, count);
-    const txData = method.encodeABI();
+  public async payFeeOne(fee: FeeModel, privateKey: string) {
+    const fee_id = _.get(fee, 'id');
+    const { from_address: from, to_address: to } = fee;
 
     const gasLimit = await web3.eth.estimateGas({ from });
 
@@ -292,13 +377,13 @@ export class Erc20Service extends BaseService {
 
     const gasPrice = web3.utils
           .toBN(price);
-	  //.add(web3.utils.toBN(10000000000));
+	  //.add(toBN(10000000000));
 
-    const gasFee = web3.utils.toBN(gasLimit).mul(gasPrice);
+    const gasFee = toBN(gasLimit).mul(gasPrice);
 
-    const gasBalance = web3.utils.toBN(await web3.eth.getBalance(from));
-    if (gasBalance.lt(gasFee.mul(web3.utils.toBN(2)))) {
-      logger.error(`gas ${from} not enough ${gasBalance} < ${gasFee.mul(web3.utils.toBN(2))}`);
+    const gasBalance = toBN(await web3.eth.getBalance(from));
+    if (gasBalance.lt(gasFee.mul(toBN(2)))) {
+      logger.error(`gas ${from} not enough ${gasBalance} < ${gasFee.mul(toBN(2))}`);
       return;
     }
 
@@ -316,74 +401,51 @@ export class Erc20Service extends BaseService {
       await web3.eth
         .sendSignedTransaction(signedTx.rawTransaction || '')
         .on('transactionHash', async (hash: string) => {
-          await orderStore.collectHash(id, hash, gasLimit, gasPrice.toString());
+          await feeStore.hash(fee_id, hash, gasFee);
         });
     } catch (e) {
-      logger.error(`order ${id} collect hash failed, ${e.toString()}`);
+      logger.error(`fee ${fee_id} hash failed, ${e.toString()}`);
     }
   }
 
   @tryLock('collect_lock')
   public async collect() {
     const { token_id } = this;
-    const orders = await orderStore.findAll({
-      where: { token_id, type: OrderType.RECHARGE, state: OrderState.CONFIRM, collect_state: OrderCollectState.HASH },
+    const recovers = await recoverStore.findAll({
+      where: { token_id, state: OrderState.CREATED },
       limit: 20
     });
 
-    const cnt = _.size(orders);
+    const cnt = _.size(recovers);
     if (0 == cnt)
       return;
 
-    const collectAddress = await addressStore.find(AddressType.COLLECT, 'eth');
-    if (!collectAddress) {
-      logger.error(`eth collect address not found`);
-      return;
-    }
-
     for (let i = 0; i < cnt; i++) {
-      const order = orders[i];
-      const { user_id, count, to_address: from } = order;
-      const [ recover, created ] = await recoverStore.findOrCreate({
-        defaults: {
-          user_id,
-          token_id,
-          order_id: order.id,
-          value: count,
-          from_address: from,
-          to_address: collectAddress.address,
-          timestamp: moment()
-        },
-        where: { order_id: order.id }
-      });
-
-      if (!created)
-        continue;
-
-      await this.collectOne(order, recover);
+      const recover = recovers[i];
+      await this.collectOne(recover);
     }
   }
 
-  public async collectOne(order: OrderModel, recover: RecoverModel) {
+  public async collectOne(recover: RecoverModel) {
     const recover_id = _.get(recover, 'id');
-    const { user_id, count, to_address: from, collect_gas_limit: gasLimit, collect_gas_price: gasPrice } = order;
-    const { to_address: to } = recover;
-    const { token, config } = this;
-    const { abi } = config;
-    const contract = new web3.eth.Contract(abi, token.address);
+    const { user_id, to_address: to, from_address: from, value } = recover;
+    const { contract } = this;
 
     const privateKey = await ethHelper.privateKey(user_id);
 
     const nonce = await web3.eth.getTransactionCount(from);
     const balance = await contract.methods.balanceOf(from).call();
-    if (balance < count) {
-      logger.error(`collect ${from} balance not enough ${count}`);
+    if (balance < value) {
+      logger.error(`collect ${from} balance not enough ${value}`);
       return;
     }
 
-    const method = contract.methods.transfer(to, count);
+    const method = contract.methods.transfer(to, value);
     const txData = method.encodeABI();
-    const gasFee = web3.utils.toBN(gasLimit).mul(web3.utils.toBN(gasPrice));
+
+    const gasLimit = await method.estimateGas({ from });
+    const gasPrice = await web3.eth.getGasPrice();
+    const gasFee = toBN(gasLimit).mul(toBN(gasPrice));
 
     const ethBalance = await web3.eth.getBalance(from);
     if (web3.utils.toBN(ethBalance).lt(gasFee)) {

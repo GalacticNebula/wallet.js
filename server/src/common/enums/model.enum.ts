@@ -31,7 +31,7 @@ export enum OrderState {
 
 export enum OrderCollectState {
   NONE = 0,
-  HASH = 1,
+  FEE = 1,
   DONE = 2
 }
 
