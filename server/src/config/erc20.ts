@@ -8,6 +8,7 @@ export interface ERC20_CONFIG {
   abi_to: string;
   abi_value: string;
   step: number;
+  collect_threshold: number;
 }
 
 export const erc20_configs: ERC20_CONFIG[] = [
@@ -17,7 +18,8 @@ export const erc20_configs: ERC20_CONFIG[] = [
     abi_from: 'from',
     abi_to: 'to',
     abi_value: 'value',
-    step: 300
+    step: 300,
+    collect_threshold: 0
   }
 ];
 

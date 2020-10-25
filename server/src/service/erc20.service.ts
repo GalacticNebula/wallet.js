@@ -1,6 +1,7 @@
 import _ from 'lodash';
 import cron from 'node-cron';
 import moment from 'moment';
+import { Op } from 'sequelize';
 import BaseService from './base.service';
 import { AddressType, Code, OrderState, OrderType, OutOrIn } from "@common/enums";
 import { Assert, Exception } from "@common/exceptions";
@@ -317,7 +318,7 @@ export class Erc20Service extends BaseService {
   public async payFee() {
     const { token_id } = this;
     const orders = await orderStore.findAll({
-      where: { token_id, type: OrderType.RECHARGE, state: OrderState.CONFIRM, collect_state: 0 },
+      where: { token_id, type: OrderType.RECHARGE, state: OrderState.CONFIRM, count: { [Op.gte]: this.config.collect_threshold }, collect_state: 0 },
       limit: 20
     });
 
