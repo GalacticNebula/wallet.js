@@ -72,7 +72,7 @@ export class Erc20Service extends BaseService {
     cron.schedule('*/15 * * * * *', async () => await self.confirm(), { timezone }).start();
     cron.schedule('*/10 * * * * *', async () => await self.withdraw(), { timezone }).start();
     cron.schedule('6,21,36,51 * * * * *', async () => await self.collect(), { timezone }).start();
-    cron.schedule('3,18,33,48 * * * *', async () => await self.payFee(), { timezone }).start();
+    cron.schedule('3,18,33,48 * * * * *', async () => await self.payFee(), { timezone }).start();
   }
 
   @tryLock('deposit_lock')
@@ -359,7 +359,7 @@ export class Erc20Service extends BaseService {
         
         await transaction.commit();
       } catch (e) {
-        await transaction?.rollback()
+        await transaction?.rollback();
         continue;
       }
 
