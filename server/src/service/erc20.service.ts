@@ -401,7 +401,7 @@ export class Erc20Service extends BaseService {
       await web3.eth
         .sendSignedTransaction(signedTx.rawTransaction || '')
         .on('transactionHash', async (hash: string) => {
-          await feeStore.hash(fee_id, hash, gasFee);
+          await feeStore.hash(fee_id, hash, Number(gasFee.toString()));
         });
     } catch (e) {
       logger.error(`fee ${fee_id} hash failed, ${e.toString()}`);
