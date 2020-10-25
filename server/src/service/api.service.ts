@@ -72,7 +72,7 @@ class ApiService extends BaseService {
     const { chain, address: token_address, symbol } = token;
     if (chain == 'eth') {
       if (token_address == '-1') {
-        balance = await ethHelper.web3.eth.getBalance(address);
+        balance = Number(await ethHelper.web3.eth.getBalance(address));
       } else {
         const config = findErc20Config(symbol);
         if (!config) throw new Exception(Code.BAD_PARAMS, `token ${token_id} not support now`);
