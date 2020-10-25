@@ -26,7 +26,8 @@ export class FeeModel extends BaseModel<FeeModel> {
   public order_id!: number;
 
   @Column({
-    allowNull: false
+    allowNull: false,
+    type: DataType.BIGINT
   })
   public value!: number;
 

@@ -26,7 +26,8 @@ export class RecoverModel extends BaseModel<RecoverModel> {
   public order_id!: number;
 
   @Column({
-    allowNull: false
+    allowNull: false,
+    type: DataType.BIGINT
   })
   public value!: number;
 
