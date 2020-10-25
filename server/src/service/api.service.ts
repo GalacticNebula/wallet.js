@@ -228,7 +228,7 @@ class ApiService extends BaseService {
     const no = [];
     const fail = [];
 
-    for (let i = 0; i < ids; i++) {
+    for (let i = 0; i < ids.length; i++) {
       const id = ids[i];
       try {
         const up = await orderStore.setFlag(Number(id), flag);
