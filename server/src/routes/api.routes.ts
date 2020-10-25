@@ -235,7 +235,8 @@ const routes: Route[] = [
         .min(0)
         .default(0),
       state: Joi
-        .array(),
+        .string()
+        .trim(),
       out_or_in: Joi
         .number()
         .integer()
@@ -245,11 +246,9 @@ const routes: Route[] = [
         .integer()
         .default(0),
       start_time: Joi
-        .number()
-        .integer(),
+        .date(),
       end_time: Joi
-        .number()
-        .integer()
+        .date()
     }),
     action: api.apiController.listOrder
   },
@@ -266,8 +265,8 @@ const routes: Route[] = [
     action: api.apiController.orderDetail
   },
   {
-    name: 'list recover',
-    path: '/recover/list',
+    name: 'list recovery',
+    path: '/recovery/list',
     method: RequestMethod.GET,
     params: Joi.object({
       token_id: Joi
@@ -293,19 +292,19 @@ const routes: Route[] = [
         .number()
         .integer()
     }),
-    action: api.apiController.listRecover
+    action: api.apiController.listRecovery
   },
   {
-    name: 'recover detail',
-    path: '/recover/detail',
+    name: 'recovery detail',
+    path: '/recovery/detail',
     method: RequestMethod.GET,
     params: Joi.object({
-      recover_id: Joi
+      recovery_id: Joi
         .number()
         .integer()
         .required()
     }),
-    action: api.apiController.recoverDetail
+    action: api.apiController.recoveryDetail
   },
   {
     name: 'sum',
@@ -325,11 +324,9 @@ const routes: Route[] = [
         .number()
         .integer(),
       start_time: Joi
-        .number()
-        .integer(),
+        .date(),
       end_time: Joi
-        .number()
-        .integer()
+        .date()
     }),
     action: api.apiController.sum
   },

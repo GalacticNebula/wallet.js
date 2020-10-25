@@ -60,12 +60,12 @@ class ApiController extends BaseController {
     return apiService.orderDetail(ctx.params);
   }
 
-  public listRecover(ctx: Context) {
-    return apiService.listRecover(ctx.params);
+  public listRecovery(ctx: Context) {
+    return apiService.listRecovery(ctx.params);
   }
 
-  public recoverDetail(ctx: Context) {
-    return apiService.recoverDetail(ctx.params);
+  public recoveryDetail(ctx: Context) {
+    return apiService.recoveryDetail(ctx.params);
   }
 
   public sum(ctx: Context) {

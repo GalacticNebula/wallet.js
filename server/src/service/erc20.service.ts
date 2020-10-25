@@ -1,9 +1,8 @@
 import _ from 'lodash';
-import Web3 from 'web3';
 import cron from 'node-cron';
 import moment from 'moment';
 import BaseService from './base.service';
-import { AddressType, Code, OrderCollectState, OrderState, OrderType, OutOrIn } from "@common/enums";
+import { AddressType, Code, OrderState, OrderType, OutOrIn } from "@common/enums";
 import { Assert, Exception } from "@common/exceptions";
 import { TokenModel } from "@models/token.model";
 import { addressStore, feeStore, orderStore, recoverStore, tokenStatusStore, tokenStore, userWalletStore } from "@store/index";
@@ -15,11 +14,8 @@ import { RecoverModel } from '@models/recover.model';
 import { sequelize } from '@common/dbs';
 import { FeeModel } from '@models/fee.model';
 
-const web3 = new Web3(Web3.givenProvider || 'https://kovan.infura.io/v3/bd8e235958e54c08a0cc78d34d26612a');
-
+const web3 = ethHelper.web3;
 const toBN = web3.utils.toBN;
-
-const timezone = 'Asia/Shanghai';
 
 function tryLock(name: string) {
   return function(target: any, propertyName: string, descriptor: TypedPropertyDescriptor<(...args: any[]) => any>) {
@@ -29,9 +25,9 @@ function tryLock(name: string) {
       if (_.get(this, name) == true)
         return;
 
-      _.set(this, 'name', true);
+      _.set(this, name, true);
       const result = await method!.apply(this, args);
-      _.set(this, 'name', false);
+      _.set(this, name, false);
       return result;
     };
   };
@@ -68,6 +64,7 @@ export class Erc20Service extends BaseService {
 
     this.contract = new web3.eth.Contract(this.config.abi, this.token.address);
 
+    const timezone = 'Asia/Shanghai';
     cron.schedule('*/8 * * * * *', async () => await self.deposit(), { timezone }).start();
     cron.schedule('*/15 * * * * *', async () => await self.confirm(), { timezone }).start();
     cron.schedule('*/10 * * * * *', async () => await self.withdraw(), { timezone }).start();

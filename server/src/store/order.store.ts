@@ -23,6 +23,24 @@ class OrderStore extends BaseStore {
     return orderRepository.findAll(options);
   }
 
+  public findAndCountAll(options: any) {
+    return orderRepository.findAndCountAll(options);
+  }
+
+  public sum(where: any) {
+    return orderRepository.sum('count', { where });
+  }
+
+  public async setFlag(id: number, flag: number) {
+    const [ rows ] = await orderRepository.update({
+      flag
+    }, {
+      where: { id }
+    });
+
+    return rows === 1;
+  }
+
   public async waitConfirm(id: number, block_number: number) {
     const [ rows ] = await orderRepository.update({
       state: OrderState.WAIT_CONFIRM,

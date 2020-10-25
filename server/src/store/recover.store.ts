@@ -5,6 +5,10 @@ import { OrderState } from '@common/enums';
 
 class RecoverStore extends BaseStore {
 
+  public findById(id: number) {
+    return recoverRepository.findByPk(id);
+  }
+
   public findOne(options: any) {
     return recoverRepository.findOne(options);
   }
@@ -15,6 +19,10 @@ class RecoverStore extends BaseStore {
 
   public findAll(options: any) {
     return recoverRepository.findAll(options);
+  }
+
+  public findAndCountAll(options: any) {
+    return recoverRepository.findAndCountAll(options);
   }
 
   public findOrCreate(options: any) {

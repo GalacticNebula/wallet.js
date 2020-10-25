@@ -11,3 +11,4 @@ export * from './order.store';
 export * from './recover.store';
 export * from './address.store';
 export * from './fee.store';
+export * from './callback.store';
