@@ -2,7 +2,7 @@ import { Table, Column, DataType } from 'sequelize-typescript';
 import BaseModel from './base';
 
 @Table({
-  tableName: 'recover',
+  tableName: 'fee',
   indexes: [
     { name: 'order_id', fields: ['order_id'], unique: true },
     { name: 'uid', fields: ['user_id'] }
