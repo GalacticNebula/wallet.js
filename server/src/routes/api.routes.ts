@@ -138,6 +138,13 @@ const routes: Route[] = [
     name: 'get block number',
     path: '/chain/blocknumber',
     method: RequestMethod.GET,
+    params: Joi.object({
+      chain: Joi
+        .string()
+        .trim()
+        .pattern(/^eth$|^omni$|^btc$|^eos$/)
+        .required()
+    }),
     action: api.apiController.blockNumber
   },
   {
