@@ -2,6 +2,7 @@ import { process_init } from '../common/utils/process_init';
 process_init();
 import { sequelize } from '@common/dbs';
 import { chainRepository, configRepository, tokenRepository, tokenStatusRepository, addressRepository, callbackRepository } from '@models/index';
+import { ethHelper } from '@helpers/';
 
 async function work() {
     await sequelize.sync({ force: true });
@@ -35,14 +36,16 @@ async function work() {
         }
     ]);
 
+    const block_number = await ethHelper.web3.eth.getBlockNumber();
+
     await tokenStatusRepository.bulkCreate([
         {
             token_id: 1,
-            block_id: 0
+            block_id: block_number
         },
         {
             token_id: 2,
-            block_id: 21674441
+            block_id: block_number
         }
     ]);
 
