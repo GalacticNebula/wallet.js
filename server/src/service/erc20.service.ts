@@ -64,7 +64,7 @@ export class Erc20Service extends BaseService {
     cron.schedule('*/20 * * * * *', async () => await self.deposit(), { timezone }).start();
     cron.schedule('*/30 * * * * *', async () => await self.confirm(), { timezone }).start();
     cron.schedule('*/10 * * * * *', async () => await self.withdraw(), { timezone }).start();
-    cron.schedule('*/2 * * * * *', async () => await self.collect(), { timezone }).start();
+    cron.schedule('5 * * * * *', async () => await self.collect(), { timezone }).start();
     cron.schedule('* * * * *', async () => await self.payFee(), { timezone }).start();
   }
 
@@ -291,8 +291,8 @@ export class Erc20Service extends BaseService {
     const price = await web3.eth.getGasPrice();
 
     const gasPrice = web3.utils
-          .toBN(price)
-          .add(web3.utils.toBN(10000000000));
+          .toBN(price);
+	  //.add(web3.utils.toBN(10000000000));
 
     const gasFee = web3.utils.toBN(gasLimit).mul(gasPrice);
 
@@ -357,7 +357,7 @@ export class Erc20Service extends BaseService {
         where: { order_id: order.id }
       });
 
-      if (created)
+      if (!created)
         continue;
 
       await this.collectOne(order, recover);
