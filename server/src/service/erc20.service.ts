@@ -60,11 +60,12 @@ export class Erc20Service extends BaseService {
 
   public init() {
     const self = this;
+
     cron.schedule('*/20 * * * * *', async () => await self.deposit(), { timezone }).start();
     cron.schedule('*/30 * * * * *', async () => await self.confirm(), { timezone }).start();
     cron.schedule('*/10 * * * * *', async () => await self.withdraw(), { timezone }).start();
     cron.schedule('*/2 * * * * *', async () => await self.collect(), { timezone }).start();
-    cron.schedule('*/59 * * * * *', async () => await self.payFee(), { timezone }).start();
+    cron.schedule('* * * * *', async () => await self.payFee(), { timezone }).start();
   }
 
   @tryLock('deposit_lock')
@@ -269,45 +270,45 @@ export class Erc20Service extends BaseService {
       return;
     }
 
-    const collectAddress = await addressStore.find(AddressType.COLLECT, 'eth');
-    if (!collectAddress) {
-      logger.error(`eth collect address not found`);
-      return;
-    }
-
     const { private_key } = gasAddress;
     for (let i = 0; i < cnt; i++) {
       const order = orders[i];
-      await this.payFeeOne(order, gasAddress.address, private_key, collectAddress.address);
+      await this.payFeeOne(order, gasAddress.address, private_key);
     }
   }
 
-  public async payFeeOne(order: OrderModel, gasAddress: string, privateKey: string, collectAddress: string) {
+  public async payFeeOne(order: OrderModel, from: string, privateKey: string) {
     const id = _.get(order, 'id');
-    const { count, to_address: from } = order;
+    const { count, to_address: to } = order;
     const { token, config } = this;
     const { abi } = config;
     const contract = new web3.eth.Contract(abi, token.address);
-    const method = contract.methods.transfer(collectAddress, count);
+    const method = contract.methods.transfer(to, count);
     const txData = method.encodeABI();
-    
-    const gasLimit = await method.estimateGas({ from });
+
+    const gasLimit = await web3.eth.estimateGas({ from });
+
     const price = await web3.eth.getGasPrice();
+
     const gasPrice = web3.utils
           .toBN(price)
           .add(web3.utils.toBN(10000000000));
-    const gasFee = web3.utils.toBN(gasLimit).mul(web3.utils.toBN(gasPrice));
 
-    const gasBalance = web3.utils.toBN(await web3.eth.getBalance(gasAddress));
+    const gasFee = web3.utils.toBN(gasLimit).mul(gasPrice);
+
+    const gasBalance = web3.utils.toBN(await web3.eth.getBalance(from));
     if (gasBalance.lt(gasFee.mul(web3.utils.toBN(2)))) {
-      logger.error(`gas ${gasAddress} not enough ${gasBalance} < ${gasFee.mul(web3.utils.toBN(2))}`);
+      logger.error(`gas ${from} not enough ${gasBalance} < ${gasFee.mul(web3.utils.toBN(2))}`);
       return;
     }
 
+    const nonce = await web3.eth.getTransactionCount(from);
+
     const signedTx = await web3.eth.accounts.signTransaction({
       gas: gasLimit,
-      gasPrice,
-      to: collectAddress,
+      gasPrice: gasPrice.toString(),
+      nonce,
+      to,
       value: gasFee.toString()
     }, privateKey);
 
@@ -315,7 +316,7 @@ export class Erc20Service extends BaseService {
       await web3.eth
         .sendSignedTransaction(signedTx.rawTransaction || '')
         .on('transactionHash', async (hash: string) => {
-          await orderStore.collectHash(id, hash, gasLimit, gasPrice);
+          await orderStore.collectHash(id, hash, gasLimit, gasPrice.toString());
         });
     } catch (e) {
       logger.error(`order ${id} collect hash failed, ${e.toString()}`);
