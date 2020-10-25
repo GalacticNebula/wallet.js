@@ -14,6 +14,8 @@ import { ethHelper } from '@helpers/index';
 import { RecoverModel } from '@models/recover.model';
 import { sequelize } from '@common/dbs';
 import { FeeModel } from '@models/fee.model';
+import { pushTask } from '@common/mq';
+import { WORKER_QUEUE } from '@common/constants';
 
 const web3 = ethHelper.web3;
 const toBN = web3.utils.toBN;
@@ -111,7 +113,7 @@ export class Erc20Service extends BaseService {
       if (exist != null)
         continue;
 
-      await orderStore.create({
+      const order = await orderStore.create({
         user_id: wallet.user_id,
         token_id,
         txid,
@@ -124,6 +126,8 @@ export class Erc20Service extends BaseService {
         block_number: blockNumber,
         state: OrderState.HASH
       });
+
+      await this.notify(order.id);
     }
 
     await tokenStatusStore.setBlockId(this.token_id, id);
@@ -138,21 +142,27 @@ export class Erc20Service extends BaseService {
     for (let i = 0; i < orders.length; i++) {
       const order = orders[i];
       const { id, state, txid } = order;
+      let updated = false;
       if (state == OrderState.HASH) {
         const ob = await web3.eth.getTransaction(txid);
         if (!_.isNil(ob.blockNumber)) {
           const up = await orderStore.waitConfirm(id, ob.blockNumber);
           if (!up) logger.error(`wait confirm ${id} failed`);
+          updated = true;
         }
       }
 
       const ob = await web3.eth.getTransactionReceipt(txid);
-      if (!ob)
-        continue;
+      if (ob) {
+        const { status } = ob;
+        const done = await orderStore.finish(id, status);
+        if (!done) logger.error(`finish ${id} ${status} failed`);
+      
+        updated = true;
+      }
 
-      const { status } = ob;
-      const done = await orderStore.finish(id, status);
-      if (!done) logger.error(`finish ${id} ${status} failed`);
+      if (updated)
+        await this.notify(id);
     }
   }
 
@@ -302,14 +312,17 @@ export class Erc20Service extends BaseService {
       data: txData
     }, privateKey);
 
+    const self = this;
     try {
     const tx = await web3.eth
       .sendSignedTransaction(signedTx.rawTransaction || '')
       .on('transactionHash', async (txid: string) => {
         await orderStore.hash(order_id, txid);
+        await self.notify(order_id);
       });
     } catch (e) {
       await orderStore.hashFail(order_id);
+      await self.notify(order_id);
       logger.error(`order ${order_id} hash failed, ${e.toString()}`);
     }
   }
@@ -469,6 +482,10 @@ export class Erc20Service extends BaseService {
       await recoverStore.hashFail(recover_id);
       logger.error(`recover order ${recover_id} hash failed, ${e.toString()}`);
     }
+  }
+
+  public async notify(order_id: number) {
+    await pushTask(WORKER_QUEUE, { action: 'callback', data: { order_id } });
   }
 
 }

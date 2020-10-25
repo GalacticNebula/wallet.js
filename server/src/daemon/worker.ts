@@ -2,16 +2,45 @@ import { process_init } from '../common/utils/process_init';
 process_init();
 
 import _ from 'lodash';
-import { logger } from '@common/utils';
+import axios from 'axios';
+import { env, logger, sign } from '@common/utils';
 import { popTask, Channel, ConsumeMessage } from '@common/mq';
 import { WORKER_QUEUE } from '@common/constants';
+import { callbackStore, orderStore } from '@store/index';
+import { Assert, Exception } from '@common/exceptions';
+import { Code } from '@common/enums';
 
 const WORKERS: { [key: string]: (data: any) => Promise<void> } = {
-  ['foo']: barTasklet
+  ['callback']: callbackTasklet
 };
 
-async function barTasklet(data: any) {
+async function callbackTasklet(data: any) {
+  try {
+    const { order_id } = data;
+    const secret = env.get('SIGN_SECRET');
 
+    const order = await orderStore.findById(order_id);
+    if (!order) throw new Exception(Code.SERVER_ERROR, `order ${order_id} not found`);
+
+    const params = order.serializer();
+    const signature = sign(params, secret);
+
+    const cb = await callbackStore.findById(1);
+    if (!cb) throw new Exception(Code.SERVER_ERROR, 'callback not found');
+
+    const { status } = await axios.get(cb.call_url_path, {
+      params,
+      timeout: 10000,
+      headers: {
+        'content-type': 'application/json',
+        signature
+      }
+    });
+
+    Assert(status == 200, Code.SERVER_ERROR, `callback failed, status=${status}`);
+  } catch (e) {
+    logger.error(e.toString());
+  }
 }
 
 async function worker(ch: Channel, msg: ConsumeMessage | null) {

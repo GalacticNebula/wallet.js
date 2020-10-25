@@ -1,17 +1,13 @@
 
-import { connect, Channel, ConsumeMessage, credentials } from 'amqplib';
+import { connect, Channel, ConsumeMessage } from 'amqplib';
 import * as _ from 'lodash';
-import { logger, hmacSha1, env } from '@common/utils';
+import { logger, env } from '@common/utils';
 
 const hostname = env.get('AMQP_HOST');
 const vhost = env.get('AMQP_VHOST', '/');
 const username = env.get('AMQP_USER', 'guest');
 const password = env.get('AMQP_PASSWD', 'guest');
 const port = env.getNumber('AMQP_PORT', 5672);
-
-const accessKeyId = env.get('AMQP_ACCESS_KEY_ID');
-const accessKeySecret = env.get('AMQP_ACCESS_KEY_SECRET');
-const resourceOwnerId = env.get('AMQP_RESOURCE_OWNER_ID');
 
 interface Task {
   action: string;
@@ -21,14 +17,7 @@ interface Task {
 
 function connectMQ() {
   const options: any = { hostname, vhost, port };
-  if (!_.isEmpty(accessKeyId)) {
-    const timestamp = Date.now().toString();
-    const name = Buffer.from([ 0, accessKeyId, resourceOwnerId ].join(':')).toString('base64');
-    const pass = Buffer.from([ hmacSha1(accessKeySecret, timestamp).toString().toUpperCase(), timestamp ].join(':')).toString('base64');
-    _.assign(options, { credentials: credentials.plain(name, pass) });
-  } else {
-    _.assign(options, { username, password });
-  }
+  _.assign(options, { username, password });
 
   return connect(options);
 }
