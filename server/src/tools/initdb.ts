@@ -2,7 +2,7 @@ import { process_init } from '../common/utils/process_init';
 process_init();
 import { sequelize } from '@common/dbs';
 import { chainRepository, configRepository, tokenRepository, tokenStatusRepository, addressRepository, callbackRepository } from '@models/index';
-import { ethHelper } from '@helpers/';
+import { ethHelper } from '@helpers/index';
 
 async function work() {
     await sequelize.sync({ force: true });
