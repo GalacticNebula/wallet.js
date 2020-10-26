@@ -1,6 +1,6 @@
 import _ from 'lodash';
 import moment from 'moment';
-import { Op } from 'sequelize';
+import { Op, UniqueConstraintError } from 'sequelize';
 import { ethHelper } from '@helpers/index';
 import BaseService from './base.service';
 import { Assert, Exception } from '@common/exceptions';
@@ -95,21 +95,61 @@ class ApiService extends BaseService {
     const { decimals, chain } = token;
     const amount = np.times(count, Math.pow(10, decimals));
 
+    if (!force) {
+      const exist = await userWalletStore.findOne({ where: { [chain]: to } });
+      if (exist != null) {
+        Assert(exist.user_id != user_id, Code.BAD_PARAMS, 'you cannot withdraw to yourself');
+
+        const ua = await userWalletStore.findByUid(user_id);
+        if (!ua) throw new Exception(Code.SERVER_ERROR, `user ${user_id} wallet not found`)
+
+        try {
+          await orderStore.create({
+            user_id,
+            token_id,
+            timestamp: moment(),
+            txid: `${Date.now()}${exist.user_id}`,
+            out_or_in: 2,
+            type: OrderType.WITHDRAW,
+            count: amount,
+            from_address: _.get(ua, chain),
+            to_address: to,
+            req_order_id,
+            state: OrderState.CONFIRM
+          });
+        } catch (e) {
+          if (e instanceof UniqueConstraintError)
+            throw new Exception(Code.BAD_PARAMS, `req_order_id ${req_order_id} already exist`);
+    
+          throw e;
+        }
+
+        return;
+      }
+    }
+
     const address = await addressStore.find(AddressType.WITHDRAW, chain);
     if (!address) throw new Exception(Code.SERVER_ERROR, `withdraw address ${chain} not found`);
 
-    await orderStore.create({
-      user_id,
-      token_id,
-      timestamp: moment(),
-      out_or_in: 1,
-      type: OrderType.WITHDRAW,
-      count: amount,
-      from_address: address.address,
-      to_address: to,
-      req_order_id,
-      state: OrderState.CREATED
-    });
+    try {
+      await orderStore.create({
+        user_id,
+        token_id,
+        timestamp: moment(),
+        out_or_in: 1,
+        type: OrderType.WITHDRAW,
+        count: amount,
+        from_address: address.address,
+        to_address: to,
+        req_order_id,
+        state: OrderState.CREATED
+      });
+    } catch (e) {
+      if (e instanceof UniqueConstraintError)
+        throw new Exception(Code.BAD_PARAMS, `req_order_id ${req_order_id} already exist`);
+
+      throw e;
+    }
   }
 
   public async inside(params: any) {

@@ -79,7 +79,7 @@ export class OrderModel extends BaseModel<OrderModel> {
   @Column({
     allowNull: false,
     type: DataType.STRING(64),
-    defaultValue: ''
+    unique: true
   })
   public req_order_id!: string;
 
