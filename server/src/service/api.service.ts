@@ -8,6 +8,8 @@ import { AddressType, Code, OrderState, OrderType } from '@common/enums';
 import { tokenStore, chainStore, userWalletStore, orderStore, addressStore, recoverStore, callbackStore } from '@store/index';
 import { np } from '@common/utils';
 import { findErc20Config } from '@config/erc20';
+import { pushTask } from '@common/mq';
+import { WORKER_QUEUE } from '@common/constants';
 
 class ApiService extends BaseService {
 
@@ -103,8 +105,9 @@ class ApiService extends BaseService {
         const ua = await userWalletStore.findByUid(user_id);
         if (!ua) throw new Exception(Code.SERVER_ERROR, `user ${user_id} wallet not found`)
 
+        let order;
         try {
-          await orderStore.create({
+          order = await orderStore.create({
             user_id,
             token_id,
             timestamp: moment(),
@@ -123,6 +126,9 @@ class ApiService extends BaseService {
     
           throw e;
         }
+
+        if (order != null)
+          await pushTask(WORKER_QUEUE, { action: 'callback', data: { order_id: order.id } });
 
         return;
       }
