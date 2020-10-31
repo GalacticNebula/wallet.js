@@ -35,6 +35,7 @@ export class EthService extends BaseService {
     super();
     this.token_id = _.get(token, 'id');
     this.init();
+    console.log('eth service started');
   }
 
   public static async create(token_id: number) {
@@ -116,7 +117,7 @@ export class EthService extends BaseService {
       }
     }
 
-    await tokenStatusStore.setBlockId(this.token_id, id);
+    await tokenStatusStore.setBlockId(token_id, id);
   }
 
   private async confirmOrders() {
@@ -236,7 +237,7 @@ export class EthService extends BaseService {
       gasPrice: gasPrice.toString(),
       nonce,
       to,
-      value: total.toString()
+      value: count
     }, privateKey);
 
     const self = this;
