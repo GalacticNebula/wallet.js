@@ -113,7 +113,7 @@ export class Erc20Service extends BaseService {
       await this.notify(order.id);
     }
 
-    await tokenStatusStore.setBlockId(this.token_id, id);
+    await tokenStatusStore.setBlockId(token_id, id);
   }
 
   private async confirmOrders() {

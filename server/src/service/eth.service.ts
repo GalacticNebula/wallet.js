@@ -28,7 +28,6 @@ export class EthService extends BaseService {
   private confirm_lock = false;
   private withdraw_lock = false;
   private collect_lock = false;
-  private payfee_lock = false;
   private token_id: number;
 
   constructor(private token: TokenModel, private config: ETH_CONFNIG) {
