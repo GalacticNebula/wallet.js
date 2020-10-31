@@ -5,12 +5,31 @@ process_init();
 import _ from 'lodash';
 import cron from 'node-cron';
 import { logger, env } from '@common/utils';
-import { Erc20Service } from '@service/index';
+import { Erc20Service, EthService } from '@service/index';
+import { addressStore, tokenStore } from '@store/index';
+import { Exception } from '@common/exceptions';
+import { Code } from '@common/enums';
 
 const timezone = 'Asia/Shanghai';
 
 async function run() {
-  const usdt = await Erc20Service.create(2);
+  const token_id = _.defaultTo(Number(process.env.token_id), 0);
+  const token = await tokenStore.findById(token_id);
+  if (!token) {
+    logger.error(`token ${token_id} not found`);
+    return;
+  }
+
+  const { chain, symbol, address } = token;
+
+  if (chain == 'eth') {
+    if (address == '-1')
+      await EthService.create(token_id);
+    else
+      await Erc20Service.create(token_id);
+  } else {
+    throw new Exception(Code.SERVER_ERROR, `token ${token_id} not implement now`);
+  }
 }
 
 if (require.main === module) {

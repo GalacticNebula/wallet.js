@@ -14,27 +14,10 @@ import { ethHelper } from '@helpers/index';
 import { RecoverModel } from '@models/recover.model';
 import { sequelize } from '@common/dbs';
 import { FeeModel } from '@models/fee.model';
-import { pushTask } from '@common/mq';
-import { WORKER_QUEUE } from '@common/constants';
+import { tryLock } from '@helpers/decorator';
 
 const web3 = ethHelper.web3;
 const toBN = web3.utils.toBN;
-
-function tryLock(name: string) {
-  return function(target: any, propertyName: string, descriptor: TypedPropertyDescriptor<(...args: any[]) => any>) {
-    const method = descriptor.value;
-    descriptor.value = async function(...args: any[]) {
-      if (!_.has(this, name)) throw new Exception(Code.SERVER_ERROR, `target without ${name}`);
-      if (_.get(this, name) == true)
-        return;
-
-      _.set(this, name, true);
-      const result = await method!.apply(this, args);
-      _.set(this, name, false);
-      return result;
-    };
-  };
-}
 
 export class Erc20Service extends BaseService {
 
@@ -329,9 +312,9 @@ export class Erc20Service extends BaseService {
 
   @tryLock('payfee_lock')
   public async payFee() {
-    const { token_id } = this;
+    const { token_id, config } = this;
     const orders = await orderStore.findAll({
-      where: { token_id, type: OrderType.RECHARGE, state: OrderState.CONFIRM, count: { [Op.gte]: this.config.collect_threshold }, collect_state: 0 },
+      where: { token_id, type: OrderType.RECHARGE, state: OrderState.CONFIRM, count: { [Op.gte]: config.collect_threshold }, collect_state: 0 },
       limit: 20
     });
 
@@ -482,10 +465,6 @@ export class Erc20Service extends BaseService {
       await recoverStore.hashFail(recover_id);
       logger.error(`recover order ${recover_id} hash failed, ${e.toString()}`);
     }
-  }
-
-  public async notify(order_id: number) {
-    await pushTask(WORKER_QUEUE, { action: 'callback', data: { order_id } });
   }
 
 }

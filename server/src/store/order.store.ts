@@ -98,7 +98,7 @@ class OrderStore extends BaseStore {
     const [ rows ] = await orderRepository.update({
       collect_state: OrderCollectState.DONE
     }, {
-      where: { id, collect_state: OrderCollectState.FEE },
+      where: { id, collect_state: [ OrderCollectState.NONE, OrderCollectState.FEE ] },
       transaction
     });
 
