@@ -1,1 +1,2 @@
-export * from './usdt';
+export * from './erc20';
+export * from './trc20';

@@ -1,7 +1,7 @@
 import _ from 'lodash';
-import { erc20_abi } from "./abi";
+import { trc20_abi } from "./abi";
 
-export interface ERC20_CONFIG {
+export interface TRC20_CONFIG {
   symbol: string;
   abi: any;
   abi_from: string;
@@ -11,10 +11,10 @@ export interface ERC20_CONFIG {
   collect_threshold: number;
 }
 
-export const erc20_configs: ERC20_CONFIG[] = [
+export const trc20_configs: TRC20_CONFIG[] = [
   {
     symbol: 'USDT',
-    abi: erc20_abi,
+    abi: trc20_abi,
     abi_from: 'from',
     abi_to: 'to',
     abi_value: 'value',
@@ -23,6 +23,6 @@ export const erc20_configs: ERC20_CONFIG[] = [
   }
 ];
 
-export function findErc20Config(symbol: string) {
-  return _.find(erc20_configs, v => v.symbol == symbol);
+export function findTrc20Config(symbol: string) {
+  return _.find(trc20_configs, v => v.symbol == symbol);
 }

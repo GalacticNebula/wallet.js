@@ -1,5 +1,4 @@
-
-export const usdt_abi = [{
+export const trc20_abi = [{
     "constant": true,
     "inputs": [],
     "name": "name",

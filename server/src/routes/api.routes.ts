@@ -26,7 +26,7 @@ const routes: Route[] = [
       chain: Joi
         .string()
         .trim()
-        .pattern(/^eth$|^omni$|^btc$|^eos$|^tron$/)
+        .pattern(fieldReg.chain.reg())
     }),
     action: api.apiController.createWallet
   },
@@ -60,7 +60,7 @@ const routes: Route[] = [
       chain: Joi
         .string()
         .trim()
-        .pattern(/^eth$|^omni$|^btc$|^eos$/)
+        .pattern(fieldReg.chain.reg())
         .required(),
       symbol: Joi
         .string()
@@ -120,7 +120,7 @@ const routes: Route[] = [
       chain: Joi
         .string()
         .trim()
-        .pattern(/^eth$|^omni$|^btc$|^eos$/)
+        .pattern(fieldReg.chain.reg())
         .required(),
       type: Joi
         .number()
@@ -142,7 +142,7 @@ const routes: Route[] = [
       chain: Joi
         .string()
         .trim()
-        .pattern(/^eth$|^omni$|^btc$|^eos$/)
+        .pattern(fieldReg.chain.reg())
         .required()
     }),
     action: api.apiController.blockNumber
@@ -208,7 +208,7 @@ const routes: Route[] = [
       chain: Joi
         .string()
         .trim()
-        .pattern(/^eth$|^omni$|^btc$|^eos$/)
+        .pattern(fieldReg.chain.reg())
         .required(),
       memo: Joi
         .string()
@@ -367,7 +367,7 @@ const routes: Route[] = [
       chain: Joi
         .string()
         .trim()
-        .pattern(/^eth$|^omni$|^btc$|^eos$/)
+        .pattern(fieldReg.chain.reg())
         .required(),
       address: Joi
         .string()
@@ -387,7 +387,7 @@ const routes: Route[] = [
         chain: Joi
           .string()
           .trim()
-          .pattern(/^eth$|^omni$|^btc$|^eos$/)
+          .pattern(fieldReg.chain.reg())
           .required(),
         address: Joi
           .string()
@@ -404,7 +404,7 @@ const routes: Route[] = [
       chain: Joi
         .string()
         .trim()
-        .pattern(/^eth$|^omni$|^btc$|^eos$/)
+        .pattern(fieldReg.chain.reg())
         .required(),
       address: Joi
         .string()
@@ -424,7 +424,7 @@ const routes: Route[] = [
       chain: Joi
         .string()
         .trim()
-        .pattern(/^eth$|^omni$|^btc$|^eos$/)
+        .pattern(fieldReg.chain.reg())
         .required(),
       addresses: Joi
         .string()

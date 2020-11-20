@@ -5,7 +5,7 @@ const TronWeb = require('tronweb');
 
 class TronHelper {
 
-  private client: any;
+  public client: any;
 
   constructor() {
     // Mainnet: 'https://api.trongrid.io'

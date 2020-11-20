@@ -33,6 +33,10 @@ export default {
     reg: () => /^[0-9A-F]{8}-[0-9A-F]{4}-4[0-9A-F]{3}-[89AB][0-9A-F]{3}-[0-9A-F]{12}$/,
     message: () => '短信id格式错误.',
   },
+  chain: {
+    reg: () => /^eth$|^omni$|^btc$|^eos$|^tron$/,
+    message: () => 'chain错误'
+  }
 } as {
   [key: string]: FieldReg;
 };
