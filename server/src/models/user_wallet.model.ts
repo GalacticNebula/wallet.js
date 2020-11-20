@@ -34,4 +34,9 @@ export class UserWalletModel extends BaseModel<UserWalletModel> {
   })
   public eos!: string;
 
+  @Column({
+    type: DataType.STRING(64)
+  })
+  public tron!: string;
+
 }

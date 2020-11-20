@@ -1,7 +1,7 @@
 import _ from 'lodash';
 import moment from 'moment';
 import { Op, UniqueConstraintError } from 'sequelize';
-import { ethHelper } from '@helpers/index';
+import { ethHelper, tronHelper } from '@helpers/index';
 import BaseService from './base.service';
 import { Assert, Exception } from '@common/exceptions';
 import { AddressType, Code, OrderState, OrderType } from '@common/enums';
@@ -19,11 +19,13 @@ class ApiService extends BaseService {
     let wallet = await userWalletStore.findByUid(user_id);
     if (!wallet) {
       const eth = await ethHelper.createWallet(user_id);
-      await userWalletStore.upsert({ user_id, eth });
+      const tron = await tronHelper.createWallet(user_id);
+
+      await userWalletStore.upsert({ user_id, eth, tron });
       wallet = await userWalletStore.findByUid(user_id);
     }
 
-    return { address: _.pick(wallet, ['eth']) };
+    return { address: _.pick(wallet, ['eth', 'tron']) };
   }
   
   public async getWallet(params: any) {
@@ -31,7 +33,7 @@ class ApiService extends BaseService {
     const wallet = await userWalletStore.findByUid(user_id);
     if (!wallet) throw new Exception(Code.BAD_PARAMS, 'user_id不合法');
 
-    return { address: _.pick(wallet, ['eth']) };
+    return { address: _.pick(wallet, ['eth', 'tron']) };
   }
 
   public listToken(params: any) {
