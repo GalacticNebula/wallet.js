@@ -1,6 +1,6 @@
 
 
-const env = process.env;
+const { env } = process;
 
 export const NODE_ENV = env.NODE_ENV;
 
@@ -22,3 +22,4 @@ export const SYSLOG_PROTOCOL = env.SYSLOGD_PROTOCOL || 'U';
 export const SYSLOG_TAG = env.SYSLOGD_TAG || 'antdev';
 
 export const MNEMONIC = env.MNEMONIC || '';
+

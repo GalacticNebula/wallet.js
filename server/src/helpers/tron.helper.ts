@@ -29,7 +29,7 @@ class TronHelper {
     const address = this.client.address.fromHex(hex);
 */
 
-    return this.client.address.fromPrivateKey(privateKey);
+    return this.client.address.fromPrivateKey(privateKey.slice(2));
   }
 
   public privateKey(uid: number) {
