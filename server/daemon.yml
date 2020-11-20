@@ -1,6 +1,6 @@
 apps:
   - script: './dist/daemon/cron.js'
-    name: 'eth service'
+    name: 'eth_service'
     env:
       token_id: 1
 
