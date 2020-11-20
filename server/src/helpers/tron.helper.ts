@@ -12,8 +12,8 @@ class TronHelper {
     this.client = new TronWeb({ fullHost: 'https://api.shasta.trongrid.io' });
   }
 
-  public createWallet(uid: number) {
-    const privateKey = this.privateKey(uid);
+  public async createWallet(uid: number) {
+    const privateKey = await this.privateKey(uid);
 
 /*
     import hdkey from 'hdkey';

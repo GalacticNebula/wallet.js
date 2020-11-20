@@ -26,7 +26,7 @@ const routes: Route[] = [
       chain: Joi
         .string()
         .trim()
-        .pattern(/^eth$|^omni$|^btc$|^eos$/)
+        .pattern(/^eth$|^omni$|^btc$|^eos$|^tron$/)
     }),
     action: api.apiController.createWallet
   },
