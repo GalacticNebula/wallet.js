@@ -128,6 +128,66 @@ export class Trc20Service extends BaseService {
     await tokenStatusStore.setBlockId(token_id, id);
   }
 
+  @tryLock('payfee_lock')
+  public async payFee() {
+    const { token_id, config } = this;
+    const orders = await orderStore.findAll({
+      where: { token_id, type: OrderType.RECHARGE, state: OrderState.CONFIRM, count: { [Op.gte]: config.collect_threshold }, collect_state: 0 },
+      limit: 20
+    });
+
+    const cnt = _.size(orders);
+    if (0 == cnt)
+      return;
+
+    const gasAddress = await addressStore.find(AddressType.GAS, 'tron');
+    if (!gasAddress) {
+      logger.error(`tron gas address not found`);
+      return;
+    }
+
+    const { private_key } = gasAddress;
+    for (let i = 0; i < cnt; i++) {
+      const order = orders[i];
+      const order_id = order.id;
+      const { user_id, token_id, to_address } = order;
+
+      let fee;
+      let transaction;
+      try {
+        transaction = await sequelize.transaction();
+
+        const up  = await orderStore.fee(order.id, transaction);
+        Assert(up, Code.SERVER_ERROR, `order ${order.id} fee failed`);
+
+        fee = await feeStore.create({
+          user_id,
+          token_id,
+          order_id,
+          value: 0,
+          from_address: gasAddress.address,
+          to_address
+        }, transaction);
+        
+        await transaction.commit();
+      } catch (e) {
+        await transaction?.rollback();
+        continue;
+      }
+
+      await this.payFeeOne(fee, private_key);
+    }
+  }
+
+  public async payFeeOne(fee: FeeModel, privateKey: string) {
+    const fee_id = _.get(fee, 'id');
+    const { from_address: from, to_address: to } = fee;
+
+    
+
+
+  }
+
   @tryLock('collect_lock')
   public async collect() {
     const { token_id, config } = this;
