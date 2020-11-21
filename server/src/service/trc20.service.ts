@@ -89,18 +89,15 @@ export class Trc20Service extends BaseService {
 
     const events = await client.event.getEventsByContractAddress(token.address, options);
 
-    console.log(events);
-
     for (let i = 0; i < events.length; i++) {
-      const { transaction: txid, result, block } = events[i];
-      const from = _.get(result, abi_from);
-      const to = _.get(result, abi_to);
+      const { transaction: txid, timestamp, result, block } = events[i];
+      const fromh = _.get(result, abi_from);
+      const toh = _.get(result, abi_to);
       const count = _.get(result, abi_value);
 
-      console.log('from: ' + client.address.fromHex(from));
-      console.log('to: ' + client.address.fromHex(to));
+      const from = client.address.fromHex(fromh);
+      const to = client.address.fromHex(toh);
 
-/*
       const wallet = await userWalletStore.findOne({ where: { tron: to } });
       if (!wallet)
         continue;
@@ -113,7 +110,7 @@ export class Trc20Service extends BaseService {
         user_id: wallet.user_id,
         token_id,
         txid,
-        timestamp: moment(),
+        timestamp: moment(timestamp),
         out_or_in: OutOrIn.OUT,
         type: OrderType.RECHARGE,
         count,
@@ -124,11 +121,10 @@ export class Trc20Service extends BaseService {
       });
 
       await this.notify(order.id);
-*/
     }
 
     await tokenStatusStore.setBlockId(token_id, id);
-
   }
 
 }
+
