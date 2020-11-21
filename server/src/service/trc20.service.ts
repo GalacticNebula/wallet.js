@@ -63,11 +63,13 @@ export class Trc20Service extends BaseService {
 
   @tryLock('deposit_lock')
   public async deposit() {
-    const { token_id, token } = this;
+    const { token_id, token, config } = this;
     const status = await tokenStatusStore.findByTokenId(token_id);
     if (!status)
       return;
     
+    const { abi_from, abi_to, abi_value } = config;
+
     const block_id = status.block_id + 1;
 
     const block = await client.trx.getCurrentBlock();
@@ -88,16 +90,18 @@ export class Trc20Service extends BaseService {
     const events = await client.event.getEventsByContractAddress(token.address, options);
 
     console.log(events);
-/*
-    for (let i = 0; i < events.length; i++) {
-      const { transactionHash: txid, returnValues, blockNumber } = events[i];
-      const from = _.get(returnValues, abi_from);
-      const to = _.get(returnValues, abi_to);
-      const count = _.get(returnValues, abi_value);
-      if (!to)
-        continue;
 
-      const wallet = await userWalletStore.findOne({ where: { eth: to } });
+    for (let i = 0; i < events.length; i++) {
+      const { transaction: txid, result, block } = events[i];
+      const from = _.get(result, abi_from);
+      const to = _.get(result, abi_to);
+      const count = _.get(result, abi_value);
+
+      console.log('from: ' + client.address.fromHex(from));
+      console.log('to: ' + client.address.fromHex(to));
+
+/*
+      const wallet = await userWalletStore.findOne({ where: { tron: to } });
       if (!wallet)
         continue;
 
@@ -115,13 +119,14 @@ export class Trc20Service extends BaseService {
         count,
         from_address: from,
         to_address: to,
-        block_number: blockNumber,
-        state: OrderState.HASH
+        block_number: block,
+        state: OrderState.CONFIRM
       });
 
       await this.notify(order.id);
-    }
 */
+    }
+
     await tokenStatusStore.setBlockId(token_id, id);
 
   }
