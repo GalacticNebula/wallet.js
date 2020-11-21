@@ -4,12 +4,11 @@ process_init();
 
 import _ from 'lodash';
 import cron from 'node-cron';
-import { logger, env } from '@common/utils';
-import { Erc20Service, EthService } from '@service/index';
-import { addressStore, tokenStore } from '@store/index';
+import { logger } from '@common/utils';
+import { Erc20Service, EthService, Trc20Service } from '@service/index';
+import { tokenStore } from '@store/index';
 import { Exception } from '@common/exceptions';
 import { Code } from '@common/enums';
-import { Trc20Service } from '@service/trc20.service';
 
 const timezone = 'Asia/Shanghai';
 
