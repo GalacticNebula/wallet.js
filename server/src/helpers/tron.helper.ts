@@ -9,7 +9,7 @@ class TronHelper {
 
   constructor() {
     // Mainnet: 'https://api.trongrid.io'
-    this.client = new TronWeb({ fullHost: 'https://api.shasta.trongrid.io' });
+    this.client = new TronWeb({ fullHost: 'https://api.shasta.trongrid.io' }, 'd33410d83f5016293de3767e5361345cee6dfec78196f836ad914973631cef17');
   }
 
   public async createWallet(uid: number) {
