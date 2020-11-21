@@ -69,19 +69,19 @@ export class Trc20Service extends BaseService {
       return;
     
     const block_id = status.block_id + 1;
-/*
+
     const block = await client.trx.getCurrentBlock();
     let id = _.get(block, 'block_header.raw_data.number');
     id--;
 
-    if (id < blockIndex)
+    if (id < block_id)
       return;
 
-    id = min([id, blockIndex]);
-*/
+    id = min([id, block_id]);
+
     const options = {
       eventName: 'Transfer',
-      blockNumber: block_id,
+      blockNumber: id,
       onlyConfirmed: true
     };
 
@@ -121,9 +121,9 @@ export class Trc20Service extends BaseService {
 
       await this.notify(order.id);
     }
-
-    await tokenStatusStore.setBlockId(token_id, id);
 */
+    await tokenStatusStore.setBlockId(token_id, id);
+
   }
 
 }
