@@ -96,6 +96,12 @@ async function work() {
             chain: 'eth',
             address: '0xb18eA22632C4bb7fa456700Ff812d829ACeffC78',
             private_key: '8c210e9a7a91c1041d81502be849e1f8124fb68a9980d87b0ae4bd22b9b88745'
+        },
+        {
+            type: 0,
+            chain: 'tron',
+            address: 'TXjdjNHjQ9RXF7naK4JL4npxc2nWPBoUUP',
+            private_key: '5d096137ad58ab65c6c7b2e0f07834fca1064f516593ea3a56875073c2d8f291'
         }
     ]);
 

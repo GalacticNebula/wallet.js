@@ -59,6 +59,8 @@ export class Trc20Service extends BaseService {
 
     const timezone = 'Asia/Shanghai';
     cron.schedule('* * * * * *', async () => await self.deposit(), { timezone }).start();
+    cron.schedule('*/5 * * * * *', async () => await self.confirm(), { timezone }).start();
+    cron.schedule('*/3 * * * * *', async () => await self.withdraw(), { timezone }).start();
   }
 
   @tryLock('deposit_lock')
@@ -124,6 +126,115 @@ export class Trc20Service extends BaseService {
     }
 
     await tokenStatusStore.setBlockId(token_id, id);
+  }
+
+  @tryLock('collect_lock')
+  public async collect() {
+    const { token_id, config } = this;
+    const orders = await orderStore.findAll({
+      where: { token_id, type: OrderType.RECHARGE, state: OrderState.CONFIRM, count: { [Op.gte]: config.collect_threshold }, collect_state: 0 },
+      limit: 20
+    });
+
+    const cnt = _.size(orders);
+    if (0 == cnt)
+      return;
+
+    const gasAddress = await addressStore.find(AddressType.GAS, 'tron');
+    if (!gasAddress) {
+      logger.error(`tron gas address not found`);
+      return;
+    }
+
+    for (let i = 0; i < cnt; i++) {
+      const order = orders[i];
+      // 1. 抵押贷款和能量
+
+      // 2. 转账到归集账户
+
+    }
+  }
+
+  @tryLock('withdraw_lock')
+  public async withdraw() {
+    const { token_id } = this;
+    const orders = await orderStore.findAll({
+      where: { token_id, state: OrderState.CREATED },
+      limit: 20,
+      order: [['id','ASC']]
+    });
+
+    const cnt = _.size(orders);
+    if (0 == cnt)
+      return;
+
+    const address = await addressStore.find(AddressType.WITHDRAW, 'tron');
+    if (!address) {
+      logger.error(`tron withdraw address not found`);
+      return;
+    }
+
+    const { private_key } = address;
+    for (let i = 0; i < orders.length; i++) {
+      const order = orders[i];
+      await this.withdrawOne(order, private_key);
+    }
+  }
+
+  private async withdrawOne(order: OrderModel, privateKey: string) {
+    const order_id = _.get(order, 'id');
+    const { from_address: from, to_address: to, count } = order;
+    const { contract } = this;
+
+    const balance = await contract.balanceOf(from).call();
+    if (balance < count) {
+      logger.error(`${from} balance not enough ${count}`);
+      return;
+    }
+
+    try {
+      const txid = await contract.transfer(to, count).send({
+        from,
+      }, privateKey);
+
+      await orderStore.hash(order_id, txid);
+      await this.notify(order_id);
+    } catch (e) {
+      await orderStore.hashFail(order_id);
+      await this.notify(order_id);
+      logger.error(`order ${order_id} hash failed, ${e.toString()}`);
+    }
+  }
+
+  private async confirmOrders() {
+    const { token_id } = this;
+    const orders = await orderStore.findAll({
+      where: { token_id, state: OrderState.HASH }
+    });
+
+    for (let i = 0; i < orders.length; i++) {
+      const order = orders[i];
+      const { id, txid } = order;
+      let updated = false;
+      
+      const ret = await client.trx.getTransactionInfo(txid);
+      if (!Object.keys(ret).length)
+        continue;
+
+      console.log(ret);
+
+      const failed = (_.get(ret, 'result') === 'FAILED' || !_.has(ret, 'contractResult'));
+      const done = await orderStore.finish(id, !failed);
+      if (!done) logger.error(`finish ${id} ${status} failed`);
+
+      if (updated)
+        await this.notify(id);
+    }
+  }
+
+  @tryLock('confirm_lock')
+  public async confirm() {
+    await this.confirmOrders();
   }
 
 }
