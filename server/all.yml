@@ -1,0 +1,14 @@
+apps:
+  - script: './dist/api.js'
+    name: 'api'
+    exec_mode: 'cluster'
+    instances: 1
+
+  - script: './dist/daemon/worker.js'
+    name: 'worker'
+
+  - script: './dist/daemon/cron.js'
+    name: 'tron_service'
+    env:
+      token_id: 3
+
