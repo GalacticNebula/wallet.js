@@ -1,8 +1,10 @@
 import { process_init } from '../common/utils/process_init';
 process_init();
+
+import _ from 'lodash';
 import { sequelize } from '@common/dbs';
 import { chainRepository, configRepository, tokenRepository, tokenStatusRepository, addressRepository, callbackRepository } from '@models/index';
-import { ethHelper } from '@helpers/index';
+import { ethHelper, tronHelper } from '@helpers/index';
 
 async function work() {
     await sequelize.sync({ force: true });
@@ -26,17 +28,30 @@ async function work() {
         },
         {
             symbol: 'USDT',
-	    //address: '0xdAC17F958D2ee523a2206206994597C13D831ec7',  // 正式链
-	    address: '0xec5d302243bc460e9d38f94852f0538571abd4ee',    // 测试链
+	        //address: '0xdAC17F958D2ee523a2206206994597C13D831ec7',  // 正式链
+	        address: '0xec5d302243bc460e9d38f94852f0538571abd4ee',    // 测试链
             name: 'Tether',
             decimals: 6,
             chain: 'eth',
+            state: 1,
+            limit_num: 1000000
+        },
+        {
+            symbol: 'USDT',
+            address: 'TLMGKAytt6Wre85cAYsXKqNWMRTA2iyDsm',
+            name: 'Tether',
+            decimals: 6,
+            chain: 'tron',
             state: 1,
             limit_num: 1000000
         }
     ]);
 
     const block_number = await ethHelper.web3.eth.getBlockNumber();
+
+    const tronweb = tronHelper.client;
+    const block = await tronweb.trx.getCurrentBlock();
+    const tron_block_id = _.get(block, 'block_header.raw_data.number');
 
     await tokenStatusRepository.bulkCreate([
         {
@@ -46,6 +61,10 @@ async function work() {
         {
             token_id: 2,
             block_id: block_number
+        },
+        {
+            token_id: 3,
+            block_id: tron_block_id
         }
     ]);
 

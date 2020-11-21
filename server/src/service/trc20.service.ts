@@ -39,7 +39,6 @@ export class Trc20Service extends BaseService {
   constructor(private token: TokenModel, private config: TRC20_CONFIG) {
     super();
     this.token_id = _.get(token, 'id');
-    this.init();
   }
 
   public static async create(token_id: number) {
@@ -49,39 +48,47 @@ export class Trc20Service extends BaseService {
     const config = findTrc20Config(token.symbol);
     if (!config) throw new Exception(Code.SERVER_ERROR, `trc20 config ${token.symbol} not found`);
 
-    return new Trc20Service(token, config);
+    const ret =  new Trc20Service(token, config);
+    await ret.init();
   }
 
-  public init() {
+  public async init() {
     const self = this;
 
-    this.contract = new client.contract(this.token.address);
+    this.contract = await client.contract().at(this.token.address);
 
     const timezone = 'Asia/Shanghai';
+    cron.schedule('* * * * * *', async () => await self.deposit(), { timezone }).start();
   }
 
   @tryLock('deposit_lock')
   public async deposit() {
-    const { token_id, config, contract } = this;
+    const { token_id, token } = this;
     const status = await tokenStatusStore.findByTokenId(token_id);
     if (!status)
       return;
-
-    const { step, abi_from, abi_to, abi_value } = config;
     
-    const blockIndex = status.block_id + 1;
-    let id = await web3.eth.getBlockNumber();
+    const block_id = status.block_id + 1;
+/*
+    const block = await client.trx.getCurrentBlock();
+    let id = _.get(block, 'block_header.raw_data.number');
     id--;
 
     if (id < blockIndex)
       return;
 
-    id = min([id, blockIndex + step - 1]);
-    const events = await contract.getPastEvents('Transfer', {
-      fromBlock: blockIndex,
-      toBlock: id
-    });
+    id = min([id, blockIndex]);
+*/
+    const options = {
+      eventName: 'Transfer',
+      blockNumber: block_id,
+      onlyConfirmed: true
+    };
 
+    const events = await client.event.getEventsByContractAddress(token.address, options);
+
+    console.log(events);
+/*
     for (let i = 0; i < events.length; i++) {
       const { transactionHash: txid, returnValues, blockNumber } = events[i];
       const from = _.get(returnValues, abi_from);
@@ -116,6 +123,7 @@ export class Trc20Service extends BaseService {
     }
 
     await tokenStatusStore.setBlockId(token_id, id);
+*/
   }
 
 }
