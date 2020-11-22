@@ -8,7 +8,6 @@ import { Assert, Exception } from "@common/exceptions";
 import { TokenModel } from "@models/token.model";
 import {
   addressStore,
-  feeStore,
   orderStore,
   recoverStore,
   tokenStatusStore,
@@ -17,9 +16,7 @@ import {
 } from "@store/index";
 import { logger, min } from '@common/utils';
 import { OrderModel } from '@models/order.model';
-import { RecoverModel } from '@models/recover.model';
 import { sequelize } from '@common/dbs';
-import { FeeModel } from '@models/fee.model';
 import { tryLock } from '@helpers/decorator';
 import { tronHelper } from '@helpers/index';
 import { findTrc20Config, TRC20_CONFIG } from '@config/trc20';
@@ -62,6 +59,7 @@ export class Trc20Service extends BaseService {
     cron.schedule('*/5 * * * * *', async () => await self.confirm(), { timezone }).start();
     cron.schedule('*/3 * * * * *', async () => await self.withdraw(), { timezone }).start();
     cron.schedule('*/4 * * * * *', async () => await self.collect(), { timezone }).start();
+    cron.schedule('* * * * *', async () => await self.payFee(), { timezone }).start();
   }
 
   @tryLock('deposit_lock')
@@ -141,22 +139,26 @@ export class Trc20Service extends BaseService {
     if (0 == cnt)
       return;
 
+    const uids = _.uniq(orders.map(v => v.user_id));
+
     const gasAddress = await addressStore.find(AddressType.GAS, 'tron');
     if (!gasAddress) {
       logger.error(`tron gas address not found`);
       return;
     }
 
-    const collectAddress = await addressStore.find(AddressType.COLLECT, 'tron');
-    if (!collectAddress) {
-      logger.error(`tron collect address not found`);
-      return;
-    }
-
     const { private_key, address: gas } = gasAddress;
-    for (let i = 0; i < cnt; i++) {
-      const order = orders[i];
-      await this.payFeeOne(order, gas, private_key, collectAddress.address);
+    for (let i = 0; i < uids.length; i++) {
+      const uid = uids[i];
+      const order = _.find(orders, v => v.user_id == uid);
+      if (!order) continue;
+
+      const { to_address: to } = order;
+      const { net, energy } = await this.getResources(to);
+      if (net < 500)
+        await this.freezeBalance(to, gas, 3, 'BANDWIDTH', 1000, private_key);
+      if (energy < 20000)
+        await this.freezeBalance(to, gas, 3, 'ENERGY', 100, private_key);
     }
   }
 
@@ -172,17 +174,6 @@ export class Trc20Service extends BaseService {
     const signed = await client.trx.sign(transaction, privateKey);
     const receipt = await client.trx.sendRawTransaction(signed);
     console.log(receipt);
-  }
-
-  public async payFeeOne(order: OrderModel, from: string, privateKey: string, collectAddress: string) {
-    const order_id = _.get(order, 'id');
-    const { user_id, token_id, count, to_address } = order;
-
-    const ret = await client.trx.getAccountResources(to_address);
-    const net = ret.freeNetLimit + ret.NetLimit;
-    const energy = ret.EnergyLimit;
-
-    // TODO
   }
 
   @tryLock('collect_lock')
@@ -209,14 +200,18 @@ export class Trc20Service extends BaseService {
     }
   }
 
+  private async getResources(address: string) {
+    const ret = await client.trx.getAccountResources(address);
+    const net = _.defaultTo(ret.freeNetLimit, 0) + _.defaultTo(ret.NetLimit, 0) - _.defaultTo(ret.freeNetUsed, 0) - _.defaultTo(ret.NetUsed, 0);
+    const energy = _.defaultTo(ret.EnergyLimit, 0) - _.defaultTo(ret.EnergyUsed, 0);
+    return { net, energy };
+  }
+
   private async collectOne(order: OrderModel, to: string) {
     const order_id = _.get(order, 'id');
     const { user_id, token_id, count, to_address: from } = order;
 
-    const ret = await client.trx.getAccountResources(from);
-    const net = _.defaultTo(ret.freeNetLimit, 0) + _.defaultTo(ret.NetLimit, 0);
-    const energy = _.defaultTo(ret.EnergyLimit, 0);
-
+    const { net, energy } = await this.getResources(from);
     if (net < 500 || energy < 20000) {
       console.log(`user ${user_id} cant collect: net=${net} energy=${energy}`);
       return;
