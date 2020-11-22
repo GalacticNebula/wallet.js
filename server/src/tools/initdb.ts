@@ -108,6 +108,12 @@ async function work() {
             chain: 'tron',
             address: 'TAiGnMyN62R17Q2KDQZXhQfP7LxTFeT25X',
             private_key: 'f56ff99328238b5a831ee6ba4b2e5007de3bf3ea45f425f860349f066341ee0f'
+        },
+        {
+            type: 2,
+            chain: 'tron',
+            address: 'TVkodJ5HDG2ykE8VEz5sdg4gJGro4Zkfxr',
+            private_key: 'd33410d83f5016293de3767e5361345cee6dfec78196f836ad914973631cef17'
         }
     ]);
 
