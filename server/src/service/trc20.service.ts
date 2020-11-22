@@ -170,7 +170,7 @@ export class Trc20Service extends BaseService {
     count: number,
     privateKey: string
   ) {
-    const transaction = await client.transationBuilder.freezeBalance(client.toSun(count), duration, resource, from, to, 1);
+    const transaction = await client.transactionBuilder.freezeBalance(client.toSun(count), duration, resource, from, to, 1);
     const signed = await client.trx.sign(transaction, privateKey);
     const receipt = await client.trx.sendRawTransaction(signed);
     console.log(receipt);
