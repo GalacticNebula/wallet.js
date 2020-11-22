@@ -39,5 +39,6 @@ export enum ChainType {
   ETH = 'eth',
   BTC = 'btc',
   OMNI = 'omni',
-  EOS = 'eos'
+  EOS = 'eos',
+  TRON = 'tron'
 }

@@ -1,4 +1,5 @@
 import _ from 'lodash';
+import { Transaction } from 'sequelize';
 import BaseStore from './base.store';
 import { recoverRepository } from '@models/index';
 import { OrderState } from '@common/enums';
@@ -13,8 +14,8 @@ class RecoverStore extends BaseStore {
     return recoverRepository.findOne(options);
   }
 
-  public create(data: any) {
-    return recoverRepository.create(data);
+  public create(data: any, transaction?: Transaction) {
+    return recoverRepository.create(data, { transaction });
   }
 
   public findAll(options: any) {
