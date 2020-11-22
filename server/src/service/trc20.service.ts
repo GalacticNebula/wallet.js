@@ -156,7 +156,7 @@ export class Trc20Service extends BaseService {
     const { private_key, address: gas } = gasAddress;
     for (let i = 0; i < cnt; i++) {
       const order = orders[i];
-      await this.payFeeOne(order, gas, private_key, collectAddress);
+      await this.payFeeOne(order, gas, private_key, collectAddress.address);
     }
   }
 
@@ -214,8 +214,8 @@ export class Trc20Service extends BaseService {
     const { user_id, token_id, count, to_address: from } = order;
 
     const ret = await client.trx.getAccountResources(from);
-    const net = ret.freeNetLimit + ret.NetLimit;
-    const energy = ret.EnergyLimit;
+    const net = _.defaultTo(ret.freeNetLimit, 0) + _.defaultTo(ret.NetLimit, 0);
+    const energy = _.defaultTo(ret.EnergyLimit, 0);
 
     if (net < 500 || energy < 20000) {
       console.log(`user ${user_id} cant collect: net=${net} energy=${energy}`);
@@ -224,7 +224,7 @@ export class Trc20Service extends BaseService {
 
     const privateKey = await tronHelper.privateKey(user_id);
 
-    const txid = await this.transfer(from, to, count, privateKey);
+    const txid = await this.transfer(from, to, count, privateKey.slice(2));
     if (!txid)
       return;
 
