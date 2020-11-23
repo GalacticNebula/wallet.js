@@ -184,8 +184,8 @@ const routes: Route[] = [
         .integer()
         .required(),
       req_order_id: Joi
-        .number()
-        .integer(),
+        .string()
+        .trim(),
       gas: Joi
         .number(),
       force: Joi
