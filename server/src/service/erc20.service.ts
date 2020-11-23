@@ -211,8 +211,9 @@ export class Erc20Service extends BaseService {
       const { id, order_id, state, txid } = recover;
       if (state == OrderState.HASH) {
         const ob = await web3.eth.getTransaction(txid);
-        if (!_.isNil(ob.blockNumber)) {
-          const up = await recoverStore.waitConfirm(id, ob.blockNumber);
+	const blockNumber = _.get(ob, 'blockNumber');
+        if (!_.isNil(blockNumber)) {
+          const up = await recoverStore.waitConfirm(id, blockNumber);
           if (!up) logger.error(`recover wait confirm ${id} failed`);
         }
       }
