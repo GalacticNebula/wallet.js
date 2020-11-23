@@ -28,8 +28,7 @@ async function callbackTasklet(data: any) {
     const cb = await callbackStore.findById(1);
     if (!cb) throw new Exception(Code.SERVER_ERROR, 'callback not found');
 
-    const { status } = await axios.get(cb.call_url_path, {
-      params,
+    const { status } = await axios.post(cb.call_url_path, params, {
       timeout: 10000,
       headers: {
         'content-type': 'application/json',

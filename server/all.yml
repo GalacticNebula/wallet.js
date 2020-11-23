@@ -8,7 +8,7 @@ apps:
     name: 'worker'
 
   - script: './dist/daemon/cron.js'
-    name: 'tron_service'
+    name: 'erc20_service'
     env:
-      token_id: 3
+      token_id: 2
 
