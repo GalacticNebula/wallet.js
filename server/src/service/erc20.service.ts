@@ -128,7 +128,7 @@ export class Erc20Service extends BaseService {
       let updated = false;
       if (state == OrderState.HASH) {
         const ob = await web3.eth.getTransaction(txid);
-        if (!_.isNil(ob.blockNumber)) {
+        if (ob && !_.isNil(ob.blockNumber)) {
           const up = await orderStore.waitConfirm(id, ob.blockNumber);
           if (!up) logger.error(`wait confirm ${id} failed`);
           updated = true;
@@ -166,7 +166,7 @@ export class Erc20Service extends BaseService {
       const { id, user_id, order_id, state, txid } = fee;
       if (state == OrderState.HASH) {
         const ob = await web3.eth.getTransaction(txid);
-        if (!_.isNil(ob.blockNumber)) {
+        if (ob && !_.isNil(ob.blockNumber)) {
           const up = await feeStore.waitConfirm(id, ob.blockNumber);
           if (!up) logger.error(`fee wait confirm ${id} failed`);
         }
