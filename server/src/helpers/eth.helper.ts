@@ -23,6 +23,14 @@ class EthHelper {
     return gasBalance;
   }
 
+  public async estimateGas(from: string) {
+    const { web3 } = this;
+    const gasLimit = await web3.eth.estimateGas({ from });
+    const price = await web3.eth.getGasPrice();
+    const gasPrice = web3.utils.toBN(price);
+    return web3.utils.toBN(gasLimit).mul(gasPrice);
+  }
+
 }
 
 export const ethHelper = new EthHelper();

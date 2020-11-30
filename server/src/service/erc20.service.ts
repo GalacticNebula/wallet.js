@@ -51,7 +51,7 @@ export class Erc20Service extends BaseService {
     cron.schedule('*/8 * * * * *', async () => await self.deposit(), { timezone }).start();
     cron.schedule('*/15 * * * * *', async () => await self.confirm(), { timezone }).start();
     cron.schedule('*/10 * * * * *', async () => await self.withdraw(), { timezone }).start();
-    cron.schedule('20,40,56 * * * * *', async () => await self.collect(), { timezone }).start();
+    cron.schedule('*/3 * * * * *', async () => await self.collect(), { timezone }).start();
   }
 
   @tryLock('deposit_lock')
@@ -305,7 +305,7 @@ export class Erc20Service extends BaseService {
     }
 
     const { private_key } = gasAddress;
-    const gas = await this.estimateGas(gasAddress.address, collectAddress.address, 1000000);
+    const gas = await ethHelper.estimateGas(gasAddress.address);
     const uids = _.uniq(orders.map(v => v.user_id));
 
     for (let i = 0; i < uids.length; i++) {
@@ -315,8 +315,11 @@ export class Erc20Service extends BaseService {
 
       const to = order.to;
       const ethBalance = await ethHelper.balance(to);
+
       if (ethBalance.gt(gas)) {
         const balance = await contract.methods.balanceOf(to).call();
+
+        console.log(`balance=${balance}`);
 
         const ids = _.filter(orders, v => v.user_id == uid).map(v => v.id);
         await orderStore.fee(ids);
@@ -346,14 +349,6 @@ export class Erc20Service extends BaseService {
     }
   }
 
-  public async estimateGas(from: string, to: string, value: number) {
-    const { contract } = this;
-    const method = contract.methods.transfer(to, value);
-    const gasLimit = await method.estimateGas({ from });
-    const gasPrice = await web3.eth.getGasPrice();
-    return toBN(gasLimit).mul(toBN(gasPrice));
-  }
-
   public async payFeeOne(fee: FeeModel, privateKey: string) {
     const fee_id = _.get(fee, 'id');
     const { from, to } = fee;
@@ -364,7 +359,7 @@ export class Erc20Service extends BaseService {
     const gasFee = toBN(gasLimit).mul(gasPrice);
 
     const gasBalance = toBN(await web3.eth.getBalance(from));
-    if (gasBalance.lt(gasFee.mul(toBN(2)))) {
+    if (gasBalance.lt(gasFee.mul(toBN(4)))) {
       logger.error(`gas ${from} not enough ${gasBalance} < ${gasFee.mul(toBN(2))}`);
       return;
     }
@@ -376,7 +371,7 @@ export class Erc20Service extends BaseService {
       gasPrice: gasPrice.toString(),
       nonce,
       to,
-      value: gasFee.toString()
+      value: gasFee.mul(toBN(3)).toString()
     }, privateKey);
 
     try {
@@ -403,6 +398,8 @@ export class Erc20Service extends BaseService {
       logger.error(`collect ${from} balance not enough ${value}`);
       return;
     }
+
+    console.log(`balance2=${balance}, value=${value}`);
 
     const method = contract.methods.transfer(to, value);
     const txData = method.encodeABI();
