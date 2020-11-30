@@ -34,7 +34,6 @@ export class EthService extends BaseService {
     super();
     this.token_id = _.get(token, 'id');
     this.init();
-    console.log('eth service started');
   }
 
   public static async create(token_id: number) {

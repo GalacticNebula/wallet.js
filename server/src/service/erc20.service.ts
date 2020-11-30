@@ -211,7 +211,7 @@ export class Erc20Service extends BaseService {
   public async withdraw() {
     const { token_id } = this;
     const orders = await orderStore.findAll({
-      where: { token_id, state: OrderState.CREATED },
+      where: { token_id, type: OrderType.WITHDRAW, state: OrderState.CREATED },
       limit: 20,
       order: [['id','ASC']]
     });
@@ -319,8 +319,6 @@ export class Erc20Service extends BaseService {
       if (ethBalance.gt(gas)) {
         const balance = await contract.methods.balanceOf(to).call();
 
-        console.log(`balance=${balance}`);
-
         const ids = _.filter(orders, v => v.user_id == uid).map(v => v.id);
         await orderStore.fee(ids);
 
@@ -365,20 +363,21 @@ export class Erc20Service extends BaseService {
     }
 
     const nonce = await web3.eth.getTransactionCount(from);
+    const fee = gasFee.mul(toBN(3)).toString();
 
     const signedTx = await web3.eth.accounts.signTransaction({
       gas: gasLimit,
       gasPrice: gasPrice.toString(),
       nonce,
       to,
-      value: gasFee.mul(toBN(3)).toString()
+      value: fee
     }, privateKey);
 
     try {
       await web3.eth
         .sendSignedTransaction(signedTx.rawTransaction || '')
         .on('transactionHash', async (txid: string) => {
-          await feeStore.hash(fee_id, txid, Number(gasFee.toString()));
+          await feeStore.hash(fee_id, txid, Number(fee));
         });
     } catch (e) {
       logger.error(`fee ${fee_id} hash failed, ${e.toString()}`);
@@ -398,8 +397,6 @@ export class Erc20Service extends BaseService {
       logger.error(`collect ${from} balance not enough ${value}`);
       return;
     }
-
-    console.log(`balance2=${balance}, value=${value}`);
 
     const method = contract.methods.transfer(to, value);
     const txData = method.encodeABI();

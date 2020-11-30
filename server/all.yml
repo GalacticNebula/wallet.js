@@ -1,14 +1,14 @@
 apps:
   - script: './dist/api.js'
-    name: 'api'
+    name: 'wallet_api'
     exec_mode: 'cluster'
     instances: 1
 
   - script: './dist/daemon/worker.js'
-    name: 'worker'
+    name: 'wallet_worker'
 
   - script: './dist/daemon/cron.js'
-    name: 'erc20_service'
+    name: 'wallet_erc20_service'
     env:
       token_id: 2
 
