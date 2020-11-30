@@ -160,7 +160,7 @@ export class EthService extends BaseService {
 
     for (let i = 0; i < recovers.length; i++) {
       const recover = recovers[i];
-      const { id, order_id, state, txid } = recover;
+      const { id, state, txid } = recover;
       if (state == OrderState.HASH) {
         const ob = await web3.eth.getTransaction(txid);
         if (!_.isNil(ob.blockNumber)) {
@@ -176,9 +176,6 @@ export class EthService extends BaseService {
       const { status } = ob;
       const done = await recoverStore.finish(id, status);
       if (!done) logger.error(`recover finish ${id} ${status} failed`);
-
-      if (status)
-        await orderStore.collected(order_id);
     }
   }
 

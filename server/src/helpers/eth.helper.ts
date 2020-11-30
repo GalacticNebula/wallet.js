@@ -19,7 +19,7 @@ class EthHelper {
 
   public async balance(address: string) {
     const { web3 } = this;
-    const gasBalance = web3.toBN(await web3.eth.getBalance(address));
+    const gasBalance = web3.utils.toBN(await web3.eth.getBalance(address));
     return gasBalance;
   }
 
