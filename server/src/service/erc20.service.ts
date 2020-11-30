@@ -346,10 +346,10 @@ export class Erc20Service extends BaseService {
     }
   }
 
-  public async estimateGas() {
+  public async estimateGas(from: string, to: string, value: number) {
     const { contract } = this;
-    const method = contract.methods.transfer();
-    const gasLimit = await method.estimateGas();
+    const method = contract.methods.transfer(to, value);
+    const gasLimit = await method.estimateGas({ from });
     const gasPrice = await web3.eth.getGasPrice();
     return toBN(gasLimit).mul(toBN(gasPrice));
   }
