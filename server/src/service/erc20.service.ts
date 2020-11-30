@@ -1,10 +1,9 @@
 import _ from 'lodash';
 import cron from 'node-cron';
 import moment from 'moment';
-import { Op } from 'sequelize';
 import BaseService from './base.service';
 import { AddressType, Code, OrderState, OrderType, OutOrIn } from "@common/enums";
-import { Assert, Exception } from "@common/exceptions";
+import { Exception } from "@common/exceptions";
 import { TokenModel } from "@models/token.model";
 import { addressStore, feeStore, orderStore, recoverStore, tokenStatusStore, tokenStore, userWalletStore } from "@store/index";
 import { ERC20_CONFIG, findErc20Config } from '@config/erc20';
@@ -12,7 +11,6 @@ import { logger, min } from '@common/utils';
 import { OrderModel } from '@models/order.model';
 import { ethHelper } from '@helpers/index';
 import { RecoverModel } from '@models/recover.model';
-import { sequelize } from '@common/dbs';
 import { FeeModel } from '@models/fee.model';
 import { tryLock } from '@helpers/decorator';
 
@@ -25,7 +23,6 @@ export class Erc20Service extends BaseService {
   private confirm_lock = false;
   private withdraw_lock = false;
   private collect_lock = false;
-  private payfee_lock = false;
   private token_id: number;
   private contract: any;
 
@@ -54,8 +51,7 @@ export class Erc20Service extends BaseService {
     cron.schedule('*/8 * * * * *', async () => await self.deposit(), { timezone }).start();
     cron.schedule('*/15 * * * * *', async () => await self.confirm(), { timezone }).start();
     cron.schedule('*/10 * * * * *', async () => await self.withdraw(), { timezone }).start();
-    cron.schedule('6,21,36,51 * * * * *', async () => await self.collect(), { timezone }).start();
-    cron.schedule('3,18,33,48 * * * * *', async () => await self.payFee(), { timezone }).start();
+    cron.schedule('20,40,56 * * * * *', async () => await self.collect(), { timezone }).start();
   }
 
   @tryLock('deposit_lock')
@@ -104,8 +100,8 @@ export class Erc20Service extends BaseService {
         out_or_in: OutOrIn.OUT,
         type: OrderType.RECHARGE,
         count,
-        from_address: from,
-        to_address: to,
+        from,
+        to,
         block_number: blockNumber,
         state: OrderState.HASH
       });
@@ -155,15 +151,9 @@ export class Erc20Service extends BaseService {
       where: { token_id, state: [ OrderState.HASH, OrderState.WAIT_CONFIRM ] }
     });
 
-    const collectAddress = await addressStore.find(AddressType.COLLECT, 'eth');
-    if (!collectAddress) {
-      logger.error(`eth collect address not found`);
-      return;
-    }
-
     for (let i = 0; i < fees.length; i++) {
       const fee = fees[i];
-      const { id, user_id, order_id, state, txid } = fee;
+      const { id, state, txid } = fee;
       if (state == OrderState.HASH) {
         const ob = await web3.eth.getTransaction(txid);
         if (ob && !_.isNil(ob.blockNumber)) {
@@ -179,24 +169,6 @@ export class Erc20Service extends BaseService {
       const { status } = ob;
       const done = await feeStore.finish(id, status);
       if (!done) logger.error(`fee finish ${id} ${status} failed`);
-
-      if (!status)
-        continue;
-        
-      const order = await orderStore.findById(order_id);
-      if (!order)
-        continue;
-
-      const { count, to_address: from } = order;
-
-      const recover = await recoverStore.create({
-        user_id,
-        token_id,
-        order_id,
-        value: count,
-        from_address: from,
-        to_address: collectAddress.address
-      });
     }
   }
 
@@ -208,10 +180,10 @@ export class Erc20Service extends BaseService {
 
     for (let i = 0; i < recovers.length; i++) {
       const recover = recovers[i];
-      const { id, order_id, state, txid } = recover;
+      const { id, state, txid } = recover;
       if (state == OrderState.HASH) {
         const ob = await web3.eth.getTransaction(txid);
-	const blockNumber = _.get(ob, 'blockNumber');
+	      const blockNumber = _.get(ob, 'blockNumber');
         if (!_.isNil(blockNumber)) {
           const up = await recoverStore.waitConfirm(id, blockNumber);
           if (!up) logger.error(`recover wait confirm ${id} failed`);
@@ -225,9 +197,6 @@ export class Erc20Service extends BaseService {
       const { status } = ob;
       const done = await recoverStore.finish(id, status);
       if (!done) logger.error(`recover finish ${id} ${status} failed`);
-
-      if (status)
-        await orderStore.collected(order_id);
     }
   }
 
@@ -266,7 +235,7 @@ export class Erc20Service extends BaseService {
 
   public async withdrawOne(order: OrderModel, privateKey: string) {
     const order_id = _.get(order, 'id');
-    const { from_address: from, to_address: to, count } = order;
+    const { from, to, count } = order;
     const { contract } = this;
 
     const nonce = await web3.eth.getTransactionCount(from);
@@ -311,12 +280,12 @@ export class Erc20Service extends BaseService {
     }
   }
 
-  @tryLock('payfee_lock')
-  public async payFee() {
-    const { token_id, config } = this;
+  @tryLock('collect_lock')
+  public async collect() {
+    const { token_id, config, contract } = this;
     const orders = await orderStore.findAll({
-      where: { token_id, type: OrderType.RECHARGE, state: OrderState.CONFIRM, count: { [Op.gte]: config.collect_threshold }, collect_state: 0 },
-      limit: 20
+      where: { token_id, type: OrderType.RECHARGE, state: OrderState.CONFIRM, collect_state: 0 },
+      limit: 50
     });
 
     const cnt = _.size(orders);
@@ -329,51 +298,69 @@ export class Erc20Service extends BaseService {
       return;
     }
 
-    const { private_key } = gasAddress;
-    for (let i = 0; i < cnt; i++) {
-      const order = orders[i];
-      const order_id = order.id;
-      const { user_id, token_id, to_address } = order;
-
-      let fee;
-      let transaction;
-      try {
-        transaction = await sequelize.transaction();
-
-        const up  = await orderStore.fee(order.id, transaction);
-        Assert(up, Code.SERVER_ERROR, `order ${order.id} fee failed`);
-
-        fee = await feeStore.create({
-          user_id,
-          token_id,
-          order_id,
-          value: 0,
-          from_address: gasAddress.address,
-          to_address
-        }, transaction);
-        
-        await transaction.commit();
-      } catch (e) {
-        await transaction?.rollback();
-        continue;
-      }
-
-      await this.payFeeOne(fee, private_key);
+    const collectAddress = await addressStore.find(AddressType.COLLECT, 'eth');
+    if (!collectAddress) {
+      logger.error(`eth collect address not found`);
+      return;
     }
+
+    const { private_key } = gasAddress;
+    const gas = await this.estimateGas();
+    const uids = _.uniq(orders.map(v => v.user_id));
+
+    for (let i = 0; i < uids.length; i++) {
+      const uid = uids[i];
+      const order = _.find(orders, v => v.user_id == uid);
+      if (!order) continue;
+
+      const to = order.to;
+      const ethBalance = await ethHelper.balance(to);
+      if (ethBalance.gt(gas)) {
+        const balance = await contract.methods.balanceOf(to).call();
+
+        const ids = _.filter(orders, v => v.user_id == uid).map(v => v.id);
+        await orderStore.fee(ids);
+
+        if (balance > config.collect_threshold) {
+          const recovery = await recoverStore.create({
+            user_id: uid,
+            token_id,
+            value: balance,
+            from: to,
+            to: collectAddress.address
+          });
+
+          await this.collectOne(recovery);
+        }
+      } else {
+        const fee = await feeStore.create({
+          user_id: uid,
+          token_id,
+          value: 0,
+          from: gasAddress.address,
+          to,
+        });
+
+        await this.payFeeOne(fee, private_key);
+      }
+    }
+  }
+
+  public async estimateGas() {
+    const { contract } = this;
+    const method = contract.methods.transfer();
+    const gasLimit = await method.estimateGas();
+    const gasPrice = await web3.eth.getGasPrice();
+    return toBN(gasLimit).mul(toBN(gasPrice));
   }
 
   public async payFeeOne(fee: FeeModel, privateKey: string) {
     const fee_id = _.get(fee, 'id');
-    const { from_address: from, to_address: to } = fee;
+    const { from, to } = fee;
 
     const gasLimit = await web3.eth.estimateGas({ from });
-
     const price = await web3.eth.getGasPrice();
-
-    const gasPrice = web3.utils
-          .toBN(price);
-	  //.add(toBN(10000000000));
-
+    const gasPrice = web3.utils.toBN(price);
     const gasFee = toBN(gasLimit).mul(gasPrice);
 
     const gasBalance = toBN(await web3.eth.getBalance(from));
@@ -395,35 +382,17 @@ export class Erc20Service extends BaseService {
     try {
       await web3.eth
         .sendSignedTransaction(signedTx.rawTransaction || '')
-        .on('transactionHash', async (hash: string) => {
-          await feeStore.hash(fee_id, hash, Number(gasFee.toString()));
+        .on('transactionHash', async (txid: string) => {
+          await feeStore.hash(fee_id, txid, Number(gasFee.toString()));
         });
     } catch (e) {
       logger.error(`fee ${fee_id} hash failed, ${e.toString()}`);
     }
   }
 
-  @tryLock('collect_lock')
-  public async collect() {
-    const { token_id } = this;
-    const recovers = await recoverStore.findAll({
-      where: { token_id, state: OrderState.CREATED },
-      limit: 20
-    });
-
-    const cnt = _.size(recovers);
-    if (0 == cnt)
-      return;
-
-    for (let i = 0; i < cnt; i++) {
-      const recover = recovers[i];
-      await this.collectOne(recover);
-    }
-  }
-
   public async collectOne(recover: RecoverModel) {
     const recover_id = _.get(recover, 'id');
-    const { user_id, to_address: to, from_address: from, value } = recover;
+    const { user_id, from, to, value } = recover;
     const { contract } = this;
 
     const privateKey = await ethHelper.privateKey(user_id);

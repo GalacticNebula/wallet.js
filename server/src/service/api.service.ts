@@ -117,8 +117,8 @@ class ApiService extends BaseService {
             out_or_in: 2,
             type: OrderType.WITHDRAW,
             count: amount,
-            from_address: _.get(ua, chain),
-            to_address: to,
+            from: _.get(ua, chain),
+            to,
             req_order_id,
             state: OrderState.CONFIRM
           });
@@ -147,8 +147,8 @@ class ApiService extends BaseService {
         out_or_in: 1,
         type: OrderType.WITHDRAW,
         count: amount,
-        from_address: address.address,
-        to_address: to,
+        from: address.address,
+        to,
         req_order_id,
         state: OrderState.CREATED
       });

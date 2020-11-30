@@ -10,7 +10,7 @@ class FeeStore extends BaseStore {
     return feeRepository.findOne(options);
   }
 
-  public create(data: any, transaction: Transaction) {
+  public create(data: any, transaction?: Transaction) {
     return feeRepository.create(data, { transaction });
   }
 

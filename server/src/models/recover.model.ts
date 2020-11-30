@@ -4,7 +4,6 @@ import BaseModel from './base';
 @Table({
   tableName: 'recover',
   indexes: [
-    { name: 'order_id', fields: ['order_id'], unique: true },
     { name: 'uid', fields: ['user_id'] }
   ]
 })
@@ -21,11 +20,6 @@ export class RecoverModel extends BaseModel<RecoverModel> {
   public token_id!: number;
 
   @Column({
-    allowNull: false
-  })
-  public order_id!: number;
-
-  @Column({
     allowNull: false,
     type: DataType.BIGINT
   })
@@ -36,14 +30,14 @@ export class RecoverModel extends BaseModel<RecoverModel> {
     type: DataType.STRING(128),
     defaultValue: ''
   })
-  public from_address!: string;
+  public from!: string;
 
   @Column({
     allowNull: false,
     type: DataType.STRING(128),
     defaultValue: ''
   })
-  public to_address!: string;
+  public to!: string;
 
   @Column({
     allowNull: false,

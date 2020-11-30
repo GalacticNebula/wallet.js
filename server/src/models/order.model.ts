@@ -55,14 +55,14 @@ export class OrderModel extends BaseModel<OrderModel> {
     type: DataType.STRING(128),
     defaultValue: ''
   })
-  public from_address!: string;
+  public from!: string;
 
   @Column({
     allowNull: false,
     type: DataType.STRING(128),
     defaultValue: ''
   })
-  public to_address!: string;
+  public to!: string;
 
   @Column({
     allowNull: false,

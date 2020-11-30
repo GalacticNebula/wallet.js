@@ -4,7 +4,7 @@ import moment from 'moment';
 import { Op } from 'sequelize';
 import BaseService from './base.service';
 import { AddressType, Code, OrderState, OrderType, OutOrIn } from "@common/enums";
-import { Assert, Exception } from "@common/exceptions";
+import { Exception } from "@common/exceptions";
 import { TokenModel } from "@models/token.model";
 import {
   addressStore,
@@ -16,7 +16,6 @@ import {
 } from "@store/index";
 import { logger, min } from '@common/utils';
 import { OrderModel } from '@models/order.model';
-import { sequelize } from '@common/dbs';
 import { tryLock } from '@helpers/decorator';
 import { tronHelper } from '@helpers/index';
 import { findTrc20Config, TRC20_CONFIG } from '@config/trc20';
@@ -115,8 +114,8 @@ export class Trc20Service extends BaseService {
         out_or_in: OutOrIn.OUT,
         type: OrderType.RECHARGE,
         count,
-        from_address: from,
-        to_address: to,
+        from,
+        to,
         block_number: block,
         state: OrderState.CONFIRM
       });
@@ -153,7 +152,7 @@ export class Trc20Service extends BaseService {
       const order = _.find(orders, v => v.user_id == uid);
       if (!order) continue;
 
-      const { to_address: to } = order;
+      const { to } = order;
       const { net, energy } = await this.getResources(to);
       if (net < 500)
         await this.freezeBalance(to, gas, 3, 'BANDWIDTH', 1000, private_key);
@@ -179,10 +178,10 @@ export class Trc20Service extends BaseService {
 
   @tryLock('collect_lock')
   public async collect() {
-    const { token_id, config } = this;
+    const { token_id, config, contract } = this;
     const orders = await orderStore.findAll({
       where: { token_id, type: OrderType.RECHARGE, state: OrderState.CONFIRM, count: { [Op.gte]: config.collect_threshold }, collect_state: 0 },
-      limit: 20
+      limit: 50
     });
 
     const cnt = _.size(orders);
@@ -195,9 +194,20 @@ export class Trc20Service extends BaseService {
       return;
     }
 
-    for (let i = 0; i < cnt; i++) {
-      const order = orders[i];
-      await this.collectOne(order, collectAddress.address);
+    const uids = _.uniq(orders.map(v => v.user_id));
+    for (let i = 0; i < uids.length; i++) {
+      const uid = uids[i];
+      const order = _.find(orders, v => v.user_id == uid);
+      if (!order)
+        continue;
+
+      const ids = _.filter(orders, v => v.user_id == uid).map(v => v.id);
+      await orderStore.fee(ids);
+
+      const { to: from } = order;
+      const balance = await contract.balanceOf(from).call();
+      if (balance > config.collect_threshold)
+        await this.collectOne(uid, from, collectAddress.address);
     }
   }
 
@@ -208,45 +218,30 @@ export class Trc20Service extends BaseService {
     return { net, energy };
   }
 
-  private async collectOne(order: OrderModel, to: string) {
-    const order_id = _.get(order, 'id');
-    const { user_id, token_id, count, to_address: from } = order;
+  private async collectOne(uid: number, from: string, to: string) {
+    const { token_id, contract } = this;
+    const balance = await contract.balanceOf(from).call();
 
     const { net, energy } = await this.getResources(from);
     if (net < 500 || energy < 20000) {
-      console.log(`user ${user_id} cant collect: net=${net} energy=${energy}`);
+      console.log(`user ${uid} cant collect: net=${net} energy=${energy}`);
       return;
     }
 
-    const privateKey = await tronHelper.privateKey(user_id);
-
-    const txid = await this.transfer(from, to, count, privateKey.slice(2));
+    const privateKey = await tronHelper.privateKey(uid);
+    const txid = await this.transfer(from, to, balance, privateKey.slice(2));
     if (!txid)
       return;
-
-    let transaction;
-    try {
-      transaction = await sequelize.transaction();
   
-      const recover = await recoverStore.create({
-        user_id,
-        token_id,
-        order_id,
-        value: count,
-        from_address: from,
-        to_address: to,
-        txid,
-        state: OrderState.HASH
-      }, transaction);
-
-      const up = await orderStore.fee(order_id, transaction);
-      Assert(up, Code.SERVER_ERROR, `order ${order_id} fee failed`);
-
-      await transaction.commit();
-    } catch (e) {
-      await transaction?.rollback();
-      throw e;
-    }
+    const recover = await recoverStore.create({
+      user_id: uid,
+      token_id,
+      value: balance,
+      from,
+      to,
+      txid,
+      state: OrderState.HASH
+    });
   }
 
   @tryLock('withdraw_lock')
@@ -296,7 +291,7 @@ export class Trc20Service extends BaseService {
 
   private async withdrawOne(order: OrderModel, privateKey: string) {
     const order_id = _.get(order, 'id');
-    const { from_address: from, to_address: to, count } = order;
+    const { from, to, count } = order;
 
     const txid = await this.transfer(from, to, count, privateKey);
     if (txid != null) {
@@ -338,7 +333,7 @@ export class Trc20Service extends BaseService {
 
     for (let i = 0; i < recovers.length; i++) {
       const recover = recovers[i];
-      const { id, order_id, txid } = recover;
+      const { id, txid } = recover;
 
       const ret = await client.trx.getTransactionInfo(txid);
       if (!Object.keys(ret).length)
@@ -348,9 +343,6 @@ export class Trc20Service extends BaseService {
 
       const done = await recoverStore.finish(id, !failed);
       if (!done) logger.error(`recover finish ${id} ${!failed} failed`);
-
-      if (!failed)
-        await orderStore.collected(order_id);
     }
   }
 

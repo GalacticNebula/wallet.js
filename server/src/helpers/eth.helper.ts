@@ -17,6 +17,12 @@ class EthHelper {
     return mnemonic.toPrivateKey(MNEMONIC, "m/44'/60'/0'/0/" + uid);
   }
 
+  public async balance(address: string) {
+    const { web3 } = this;
+    const gasBalance = web3.toBN(await web3.eth.getBalance(address));
+    return gasBalance;
+  }
+
 }
 
 export const ethHelper = new EthHelper();

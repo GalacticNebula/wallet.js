@@ -106,8 +106,8 @@ export class EthService extends BaseService {
           out_or_in: OutOrIn.OUT,
           type: OrderType.RECHARGE,
           count: value,
-          from_address: from,
-          to_address: to,
+          from,
+          to,
           block_number: block.number,
           state: OrderState.HASH
         });
@@ -216,7 +216,7 @@ export class EthService extends BaseService {
 
   public async withdrawOne(order: OrderModel, privateKey: string) {
     const order_id = _.get(order, 'id');
-    const { from_address: from, to_address: to, count } = order;
+    const { from, to, count } = order;
 
     const gasLimit = await web3.eth.estimateGas({ from });
     const price = await web3.eth.getGasPrice();
@@ -275,15 +275,15 @@ export class EthService extends BaseService {
     for (let i = 0; i < cnt; i++) {
       const order = orders[i];
       const order_id = order.id;
-      const { user_id, token_id, to_address: from, count } = order;
+      const { user_id, token_id, to: from, count } = order;
       
       const recover = await recoverStore.create({
         user_id,
         token_id,
         order_id,
         value: count,
-        from_address: from,
-        to_address: collectAddress.address
+        from,
+        to: collectAddress.address
       });
 
       await this.collectOne(recover);
@@ -292,7 +292,7 @@ export class EthService extends BaseService {
 
   public async collectOne(recover: RecoverModel) {
     const recover_id = _.get(recover, 'id');
-    const { user_id, to_address: to, from_address: from, value } = recover;
+    const { user_id, to, from, value } = recover;
     const privateKey = await ethHelper.privateKey(user_id);
 
     const gasLimit = await web3.eth.estimateGas({ from });

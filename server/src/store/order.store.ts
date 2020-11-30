@@ -83,7 +83,7 @@ class OrderStore extends BaseStore {
     return rows === 1;
   }
 
-  public async fee(id: number, transaction?: Transaction) {
+  public async fee(id: number | number[], transaction?: Transaction) {
     const [ rows ] = await orderRepository.update({
       collect_state: OrderCollectState.FEE
     }, {
