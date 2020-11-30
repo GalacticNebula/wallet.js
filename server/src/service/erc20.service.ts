@@ -305,7 +305,7 @@ export class Erc20Service extends BaseService {
     }
 
     const { private_key } = gasAddress;
-    const gas = await this.estimateGas();
+    const gas = await this.estimateGas(gasAddress.address, collectAddress.address, 1000000);
     const uids = _.uniq(orders.map(v => v.user_id));
 
     for (let i = 0; i < uids.length; i++) {
