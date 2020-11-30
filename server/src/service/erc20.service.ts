@@ -363,21 +363,21 @@ export class Erc20Service extends BaseService {
     }
 
     const nonce = await web3.eth.getTransactionCount(from);
-    const fee = gasFee.mul(toBN(3)).toString();
+    const value = gasFee.mul(toBN(3)).toString();
 
     const signedTx = await web3.eth.accounts.signTransaction({
       gas: gasLimit,
       gasPrice: gasPrice.toString(),
       nonce,
       to,
-      value: fee
+      value
     }, privateKey);
 
     try {
       await web3.eth
         .sendSignedTransaction(signedTx.rawTransaction || '')
         .on('transactionHash', async (txid: string) => {
-          await feeStore.hash(fee_id, txid, Number(fee));
+          await feeStore.hash(fee_id, txid, Number(value));
         });
     } catch (e) {
       logger.error(`fee ${fee_id} hash failed, ${e.toString()}`);
