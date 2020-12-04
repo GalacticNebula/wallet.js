@@ -296,8 +296,12 @@ class ApiService extends BaseService {
     };
   }
 
-  public walletConfig(params: any) {
-    return addressStore.list();
+  public async walletConfig(params: any) {
+    const rows = await addressStore.list();
+    return rows.map(v => ({
+        ...v.serializer({ exclude: ['private_key'] }),
+        private_key: (_.size(v.private_key) == 0 ? v.private_key : (v.private_key.substr(0, 6) + '...' + v.private_key.substr(-6, 6)))
+    }));
   }
 
   public async updateWithdrawAddress(params: any) {
