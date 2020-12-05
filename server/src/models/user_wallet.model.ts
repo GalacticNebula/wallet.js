@@ -39,4 +39,10 @@ export class UserWalletModel extends BaseModel<UserWalletModel> {
   })
   public tron!: string;
 
+  @Column({
+    allowNull: false,
+    defaultValue: false
+  })
+  public cold!: boolean;
+
 }

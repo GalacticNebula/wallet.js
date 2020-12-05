@@ -3,7 +3,14 @@ process_init();
 
 import _ from 'lodash';
 import { sequelize } from '@common/dbs';
-import { chainRepository, configRepository, tokenRepository, tokenStatusRepository, addressRepository, callbackRepository } from '@models/index';
+import {
+    chainRepository,
+    configRepository,
+    tokenRepository,
+    tokenStatusRepository,
+    addressRepository,
+    callbackRepository
+} from '@models/index';
 import { ethHelper, tronHelper } from '@helpers/index';
 
 async function work() {
@@ -13,6 +20,14 @@ async function work() {
         {
             name: 'web_status',
             value: '1'
+        },
+        {
+            name: 'auto_collect_eth',
+            value: '0'
+        },
+        {
+            name: 'auto_collect_tron',
+            value: '0'
         }
     ]);
 

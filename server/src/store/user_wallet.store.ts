@@ -12,6 +12,10 @@ class UserWalletStore extends BaseStore {
     return userWalletRepository.findOne(options);
   }
 
+  public create(data: any) {
+    return userWalletRepository.create(data);
+  }
+
   public upsert(data: any) {
     return userWalletRepository.upsert(data);
   }

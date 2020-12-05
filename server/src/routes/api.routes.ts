@@ -23,10 +23,17 @@ const routes: Route[] = [
         .number()
         .integer()
         .required(),
-      chain: Joi
+      cold: Joi
+        .number()
+        .integer()
+        .valid(0, 1)
+        .default(0),
+      eth: Joi
         .string()
-        .trim()
-        .pattern(fieldReg.chain.reg())
+        .trim(),
+      tron: Joi
+        .string()
+        .trim(),
     }),
     action: api.apiController.createWallet
   },
@@ -35,10 +42,10 @@ const routes: Route[] = [
     path: '/wallet/address',
     method: RequestMethod.GET,
     params: Joi.object({
-        user_id: Joi
-          .number()
-          .integer()
-          .required()
+      user_id: Joi
+        .number()
+        .integer()
+        .required()
     }),
     action: api.apiController.getWallet,
   },
@@ -162,6 +169,22 @@ const routes: Route[] = [
         .required()
     }),
     action: api.apiController.balance
+  },
+  {
+    name: 'get balance of uids',
+    path: '/user/balance',
+    method: RequestMethod.GET,
+    params: Joi.object({
+      uids: Joi
+        .string()
+        .trim()
+        .required(),
+      token_id: Joi
+        .number()
+        .integer()
+        .required()
+    }),
+    action: api.apiController.userBalance
   },
   {
     name: 'withdraw',

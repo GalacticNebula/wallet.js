@@ -16,6 +16,12 @@ export class OrderModel extends BaseModel<OrderModel> {
   public user_id!: number;
 
   @Column({
+    allowNull: false,
+    defaultValue: false
+  })
+  public cold!: boolean;
+
+  @Column({
     allowNull: false
   })
   public token_id!: number;

@@ -8,6 +8,7 @@ import { Exception } from "@common/exceptions";
 import { TokenModel } from "@models/token.model";
 import {
   addressStore,
+  configStore,
   orderStore,
   recoverStore,
   tokenStatusStore,
@@ -117,7 +118,8 @@ export class Trc20Service extends BaseService {
         from,
         to,
         block_number: block,
-        state: OrderState.CONFIRM
+        state: OrderState.CONFIRM,
+        cold: wallet.cold
       });
 
       await this.notify(order.id);
@@ -179,8 +181,13 @@ export class Trc20Service extends BaseService {
   @tryLock('collect_lock')
   public async collect() {
     const { token_id, config, contract } = this;
+
+    const auto = await configStore.getNumber('auto_collect_tron', 0);
+    if (0 == auto)
+      return;
+
     const orders = await orderStore.findAll({
-      where: { token_id, type: OrderType.RECHARGE, state: OrderState.CONFIRM, count: { [Op.gte]: config.collect_threshold }, collect_state: 0 },
+      where: { token_id, type: OrderType.RECHARGE, state: OrderState.CONFIRM, count: { [Op.gte]: config.collect_threshold }, collect_state: 0, cold: false },
       limit: 50
     });
 

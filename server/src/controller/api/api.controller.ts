@@ -44,6 +44,10 @@ class ApiController extends BaseController {
     return apiService.balance(ctx.params);
   }
 
+  public userBalance(ctx: Context) {
+    return apiService.userBalance(ctx.params);
+  }
+
   public withdraw(ctx: Context) {
     return apiService.withdraw(ctx.params);
   }

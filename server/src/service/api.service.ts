@@ -10,21 +10,31 @@ import { np } from '@common/utils';
 import { findErc20Config } from '@config/erc20';
 import { pushTask } from '@common/mq';
 import { WORKER_QUEUE } from '@common/constants';
+import { TokenModel } from '@models/token.model';
 
 class ApiService extends BaseService {
 
   public async createWallet(params: any) {
-    const { user_id, chain } = params;
+    const { user_id, cold, eth, tron } = params;
 
-    let wallet = await userWalletStore.findByUid(user_id);
-    if (!wallet) {
-      const eth = await ethHelper.createWallet(user_id);
-      const tron = await tronHelper.createWallet(user_id);
+    const exist = await userWalletStore.findByUid(user_id);
+    if (!_.isNil(exist))
+      return { address: _.pick(exist, ['eth', 'tron']) };
 
-      await userWalletStore.upsert({ user_id, eth, tron });
-      wallet = await userWalletStore.findByUid(user_id);
+    const data: any = { user_id };
+    if (cold) {
+      Assert(!_.isNil(eth) || !_.isNil(tron), Code.SERVER_ERROR, 'both address null');
+      if (!_.isNil(eth))
+        _.assign(data, { eth });
+      if (!_.isNil(tron))
+        _.assign(data, { tron });
+    } else {
+      const _eth = await ethHelper.createWallet(user_id);
+      const _tron = await tronHelper.createWallet(user_id);
+      _.assign(data, { eth: _eth, tron: _tron });
     }
 
+    const wallet = await userWalletStore.create({ user_id, eth, tron, cold });
     return { address: _.pick(wallet, ['eth', 'tron']) };
   }
   
@@ -68,11 +78,15 @@ class ApiService extends BaseService {
 
   public async balance(params: any) {
     const { address, token_id } = params;
-    let balance = 0;
-
     const token = await tokenStore.findById(token_id);
     if (!token) throw new Exception(Code.BAD_PARAMS, `token ${token_id} not found`);
 
+    return this.getBalance(address, token);
+  }
+
+  private async getBalance(address: string, token: TokenModel) {
+    let balance = 0;
+    const token_id = _.get(token, 'id');
     const { chain, address: token_address, symbol } = token;
     if (chain == 'eth') {
       if (token_address == '-1') {
@@ -88,7 +102,34 @@ class ApiService extends BaseService {
       throw new Exception(Code.SERVER_ERROR, `token ${token_id} not support`);
     }
 
-    return { address, token_id, balance };
+    return { balance };
+  }
+
+  public async userBalance(params: any) {
+    const { uids, token_id } = params;
+    const token = await tokenStore.findById(token_id);
+    if (!token) throw new Exception(Code.BAD_PARAMS, `token ${token_id} not found`);
+
+    const { chain } = token;
+    const ids = uids.split(',');
+    const ret = [];
+    for (let i = 0; i < ids.length; i++) {
+      const uid = ids[i];
+      const u = await userWalletStore.findByUid(uid);
+      if (!u) continue;
+
+      const address = _.get(u, chain);
+      if (_.isNil(address) || _.isEmpty(address))
+        continue;
+
+      const { balance } = await this.getBalance(address, token);
+      ret.push({
+        uid,
+        balance
+      });
+    }
+
+    return ret;
   }
 
   public async withdraw(params: any) {

@@ -5,7 +5,16 @@ import BaseService from './base.service';
 import { AddressType, Code, OrderState, OrderType, OutOrIn } from "@common/enums";
 import { Exception } from "@common/exceptions";
 import { TokenModel } from "@models/token.model";
-import { addressStore, feeStore, orderStore, recoverStore, tokenStatusStore, tokenStore, userWalletStore } from "@store/index";
+import {
+  addressStore,
+  configStore,
+  feeStore,
+  orderStore,
+  recoverStore,
+  tokenStatusStore,
+  tokenStore,
+  userWalletStore
+} from "@store/index";
 import { ERC20_CONFIG, findErc20Config } from '@config/erc20';
 import { logger, min } from '@common/utils';
 import { OrderModel } from '@models/order.model';
@@ -103,7 +112,8 @@ export class Erc20Service extends BaseService {
         from,
         to,
         block_number: blockNumber,
-        state: OrderState.HASH
+        state: OrderState.HASH,
+        cold: wallet.cold
       });
 
       await this.notify(order.id);
@@ -283,8 +293,13 @@ export class Erc20Service extends BaseService {
   @tryLock('collect_lock')
   public async collect() {
     const { token_id, config, contract } = this;
+
+    const auto = await configStore.getNumber('auto_collect_eth', 0);
+    if (0 == auto)
+      return;
+
     const orders = await orderStore.findAll({
-      where: { token_id, type: OrderType.RECHARGE, state: OrderState.CONFIRM, collect_state: 0 },
+      where: { token_id, type: OrderType.RECHARGE, state: OrderState.CONFIRM, collect_state: 0, cold: false },
       limit: 50
     });
 
