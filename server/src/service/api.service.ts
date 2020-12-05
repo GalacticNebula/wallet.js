@@ -21,7 +21,7 @@ class ApiService extends BaseService {
     if (!_.isNil(exist))
       return { address: _.pick(exist, ['eth', 'tron']) };
 
-    const data: any = { user_id };
+    const data: any = { user_id, cold };
     if (cold) {
       Assert(!_.isNil(eth) || !_.isNil(tron), Code.SERVER_ERROR, 'both address null');
       if (!_.isNil(eth))
@@ -34,7 +34,7 @@ class ApiService extends BaseService {
       _.assign(data, { eth: _eth, tron: _tron });
     }
 
-    const wallet = await userWalletStore.create({ user_id, eth, tron, cold });
+    const wallet = await userWalletStore.create(data);
     return { address: _.pick(wallet, ['eth', 'tron']) };
   }
   
