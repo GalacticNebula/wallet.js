@@ -5,10 +5,10 @@ import _ from 'lodash';
 import axios from 'axios';
 import { env, logger, sign } from '@common/utils';
 import { popTask, Channel, ConsumeMessage } from '@common/mq';
-import { WORKER_QUEUE } from '@common/constants';
 import { callbackStore, orderStore } from '@store/index';
 import { Assert, Exception } from '@common/exceptions';
 import { Code } from '@common/enums';
+import { WORKER_QUEUE } from '@config/env';
 
 const WORKERS: { [key: string]: (data: any) => Promise<void> } = {
   ['callback']: callbackTasklet

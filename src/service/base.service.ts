@@ -1,5 +1,5 @@
-import { WORKER_QUEUE } from "@common/constants";
 import { pushTask } from "@common/mq";
+import { WORKER_QUEUE } from "@config/env";
 
 class BaseService {
 

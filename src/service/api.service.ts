@@ -9,8 +9,8 @@ import { tokenStore, chainStore, userWalletStore, orderStore, addressStore, reco
 import { np } from '@common/utils';
 import { findErc20Config } from '@config/erc20';
 import { pushTask } from '@common/mq';
-import { WORKER_QUEUE } from '@common/constants';
 import { TokenModel } from '@models/token.model';
+import { WORKER_QUEUE } from '@config/env';
 
 class ApiService extends BaseService {
 
