@@ -2,7 +2,7 @@ import * as _ from 'lodash';
 import BaseStore from './base.store';
 import { configRepository } from '@models/index';
 import { redisStore } from './redis.store';
-import { PROJECT_NAME } from '@common/constants';
+import { PROJECT_NAME } from '@config/env';
 
 const KEY = `${PROJECT_NAME}:config`;
 

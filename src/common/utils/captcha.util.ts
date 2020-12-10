@@ -1,7 +1,7 @@
 import * as _ from 'lodash';
 import { v4 as uuidv4 } from 'uuid';
 import { redisStore } from "@store/index";
-import { PROJECT_NAME } from "@common/constants";
+import { PROJECT_NAME } from "@config/env";
 
 const svgCaptcha = require('svg-captcha');
 const NODE_ENV = process.env.NODE_ENV || '';
