@@ -1,5 +1,5 @@
 import { Next } from 'koa';
-import Joi from '@hapi/joi';
+import Joi from 'joi';
 import { Code } from '@common/enums';
 import { logger } from '@common/utils';
 

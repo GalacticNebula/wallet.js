@@ -1,4 +1,4 @@
-import Joi from '@hapi/joi';
+import Joi from 'joi';
 import { Route } from '@common/interfaces';
 import { RequestMethod } from '@common/enums';
 import fieldReg from '@common/field_reg';
